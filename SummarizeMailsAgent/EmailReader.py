@@ -8,6 +8,11 @@ import base64
 from email.mime.text import MIMEText
 from datetime import datetime
 
+"""
+This class is responsible for reading emails from Gmail. 
+It uses Oauth2.0 for authentication and the root  of this project must have a credentials.json file to authenticate.
+It uses the Gmail API to fetch the latest emails from the user's inbox.
+"""
 class GmailReader:
     def __init__(self):
         self.SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
