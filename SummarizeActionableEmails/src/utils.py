@@ -1,0 +1,2 @@
+RESTRICTED_EMAILS = ["General knowledge <generalknowledge-space@quora.com>","Alibaba.com <sale2@service.alibaba.com>","Google <no-reply@accounts.google.com>","Google Maps Timeline <noreply-maps-timeline@google.com>"
+                     ,"	Facebook <groupupdates@facebookmail.com>"]
