@@ -1,0 +1,58 @@
+The email requires action.
+Action: Review 24 unread notifications (4 messages from friends, 17 friend requests, and 3 other new notifications). 
+
+Note: The email provides links to view the notifications on Facebook, but the primary action required is to review the notifications themselves.
+The email does not require action. The content is a HTML code snippet that includes two image tags with URLs, indicating that the email is likely an unsubscribe or tracking link notification from Zomato, rather than an actionable email.
+
+Here is the complete final answer:
+
+Boolean: False
+Description: This email is likely a notification for unsubscribe or tracking purposes and does not require action from the user.
+Boolean: True
+Action: Review deals under US $199
+
+Explanation:
+The email subject mentions "Deals under US $199", which implies that there are specific deals or opportunities that need to be reviewed. This suggests that the email is actionable and requires the recipient to take some action, such as reviewing the deals listed.
+
+Since I am trained to sift through email content to identify tasks or actions that need to be taken, I have identified this as an actionable item. The email does not explicitly state what needs to be done, but based on the subject line, it is reasonable to assume that the recipient needs to review the deals under US $199.
+
+I will provide a detailed output for the final answer:
+
+{
+  "is_actionable": true,
+  "action": "Review deals under US $199"
+}
+The email is actionable. 
+
+Action Description: The user needs to complete these two steps to protect their account:
+
+1. Change their password by clicking on the provided link and following the instructions.
+2. Review the apps that have access to their account and revoke access to any unfamiliar apps.
+
+Note: If it was the user's action, no further action is required and they can ignore this message.
+Actionable: False
+Brief Description: None
+Boolean Value: False
+Action Description: N/A 
+
+The email subject indicates that there's an incoming message, but the body doesn't provide any specific information about what the action is or what needs to be done. It seems like this might be a notification email from the platform itself. Without more context or clear instructions on what needs to be done, I'm unable to identify any actionable items in this email.
+{
+  "Actionable": false,
+  "Brief Description": "There isn't enough information provided within the email to confirm whether there is any action that Akshay needs to take at this time."
+}
+Email is actionable. The action is: Review the "frosted polybags for clothing custom" offered in the email and consider purchasing them if needed.
+
+Here's the actual complete content of the final answer:
+{
+  "is_actionable": true,
+  "action_description": "Review the \"frosted polybags for clothing custom\" offered in the email and consider purchasing them if needed."
+}
+The email is actionable. 
+ Brief description of action: Order products under US $199
+{
+"actionable": true,
+"description": "Elevate inventory with factory-direct samples"
+}
+The email requires action.
+"Click on this link to view more deals"
+This email has an actionable item that encourages the recipient to take a specific action by clicking on a provided link.
