@@ -8,12 +8,14 @@ from langchain_text_splitters.sentence_transformers import SentenceTransformersT
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from sentence_transformers import SentenceTransformer
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Initialize embedding model
 #embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+embedding_model = HuggingFaceEmbeddings(model_name="dunzhang/stella_en_1.5B_v5")
+#SentenceTransformer('all-MiniLM-L6-v2')
 # Initialize KB database
 db = Chroma(collection_name="cp_database",
             embedding_function=embedding_model,
@@ -53,7 +55,8 @@ def add_to_db(uploaded_files):
         st_chunks = st_text_splitter.create_documents(doc_content, doc_metadata)
 
         # Add chunks to database
-        db.add_documents(st_chunks)
+        #db.add_documents(st_chunks)
+        db.add_documents(data)
 
         # Remove the temporary file after processing
         os.remove(temp_file_path)
@@ -80,8 +83,8 @@ def run_rag_chain(query):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
 
     # Initialize a Generator (i.e. Chat Model)
-    chat_model = Ollama(
-        model="deepseek",
+    chat_model = OllamaLLM(
+        model="qwen2.5:7b",
         base_url="http://localhost:11434",  # Assuming Ollama is running locally on this port
         temperature=1
     )
@@ -99,12 +102,12 @@ def run_rag_chain(query):
 
 
 def main():
-    st.set_page_config(page_title="PharmaQuery", page_icon=":microscope:")
-    st.header("Pharmaceutical Insight Retrieval System")
+    st.set_page_config(page_title="Query", page_icon=":microscope:")
+    st.header("KB Retrieval System")
 
     query = st.text_area(
-        ":bulb: Enter your query about the Pharmaceutical Industry:",
-        placeholder="e.g., What are the AI applications in drug discovery?"
+        ":bulb: Enter your query about the document:",
+        placeholder="e.g., What is the info on document?"
     )
 
     if st.button("Submit"):
@@ -116,17 +119,6 @@ def main():
                 result = run_rag_chain(query=query)
                 st.write(result)
 
-    with st.sidebar:
-        st.title("API Keys")
-        gemini_api_key = st.text_input("Enter your Gemini API key:", type="password")
-
-        if st.button("Enter"):
-            if gemini_api_key:
-                st.session_state.gemini_api_key = gemini_api_key
-                st.success("API key saved!")
-
-            else:
-                st.warning("Please enter your Gemini API key to proceed.")
     
     with st.sidebar:
         st.markdown("---")
