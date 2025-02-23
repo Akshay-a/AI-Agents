@@ -1,6 +1,6 @@
 import os
 import logging
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -8,20 +8,20 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_ollama import OllamaLLM
+import bs4
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Set USER_AGENT to avoid warning
+os.environ["USER_AGENT"] = "MyRAGAgent/1.0"
+
+# Initialize embedding model globally
 embedding_model = HuggingFaceEmbeddings(model_name="dunzhang/stella_en_1.5B_v5")
+
+# Initialize database globally
 db = Chroma(collection_name="cp_database", embedding_function=embedding_model, persist_directory='./db_knowledge_base')
-"""
-The RecursiveCharacterTextSplitter:
-Takes the full text and checks if it’s <= chunk_size (1500). If not, it proceeds.
-Looks for the first separator (\n \n) to split the text into segments.
-If a segment is still > chunk_size, it moves to the next separator (\n), then ., then " ".
-Applies chunk_overlap to ensure continuity, pulling back 200 characters from the previous chunk.
-Repeats recursively until all chunks are <= chunk_size.
-"""
+
 PROMPT_TEMPLATE = """
 Based on the following context:
 {context}
@@ -34,39 +34,83 @@ def format_docs(docs):
     print("Retrieved Context:", context)
     return context
 
-def main():
+def load_document_data(isWeb, path, doc_type, source_id):
+    if isWeb:
+        loader = WebBaseLoader(
+            web_paths=(path,),
+            bs_kwargs=dict(
+                parse_only=bs4.SoupStrainer(
+                    class_=("post-content", "post-title", "post-header")
+                )
+            ),
+        )
+    else:
+        loader = PyPDFLoader(path, extract_images=False)
+    
     try:
-        # Load PDF
-        loader = PyPDFLoader('./RAG-Agent/temp/SOP.pdf', extract_images=False)
         data = loader.load()
         doc_content = [data[i].page_content for i in range(len(data))]
         doc_metadata = [data[i].metadata for i in range(len(data))]
-        #print("Raw Document Content:", doc_content)
+        
+        # Add custom metadata
+        for meta in doc_metadata:
+            meta["doc_type"] = doc_type
+            meta["source_id"] = source_id
+        
+        return doc_content, doc_metadata
+    except Exception as e:
+        logger.error(f"Failed to load {path}: {str(e)}")
+        raise
 
+def reset_and_initialize_db():
+    """Reset and reinitialize the Chroma database."""
+    global db
+    db.delete_collection()  # Delete the existing collection
+    # Reinitialize the Chroma instance
+    db = Chroma(
+        collection_name="cp_database",
+        embedding_function=embedding_model,
+        persist_directory='./db_knowledge_base'
+    )
+    logger.info("Database reset and reinitialized.")
+
+def main():
+    try:
+        # Reset and reinitialize the database
+        reset_and_initialize_db()
+
+        # Load the blog
+        doc_content, doc_metadata = load_document_data(
+            isWeb=True,
+            path="https://lilianweng.github.io/posts/2023-06-23-agent/",
+            doc_type="blog",
+            source_id="agent_blog_2023"
+        )
+        
         # Split into chunks
         st_text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1500,
-            chunk_overlap=200,
+            chunk_size=3000,
+            chunk_overlap=500,
             separators=["\n \n", "\n", ".", " "]
         )
         st_chunks = st_text_splitter.create_documents(doc_content, doc_metadata)
         print("Chunks:", [chunk.page_content for chunk in st_chunks])
+        print("Chunk Metadata:", [chunk.metadata for chunk in st_chunks])
 
-        # Reset and populate database
-        db = Chroma(collection_name="cp_database", embedding_function=embedding_model, persist_directory='./db_knowledge_base')
+        # Add to database
         db.add_documents(st_chunks)
         print("Processed and added to the database!")
 
-        # Query
-        query = "tell me about Goutham Kumar"
-        retriever = db.as_retriever(search_kwargs={'k': 5})
+        # Query to just test the insertion of the embedings to the vector db , Dry Run
+        # created seperate chatbot.py class to test the db in a full  fledged manner
+        query = "what is chain of thought?"
+        retriever = db.as_retriever()
 
-        # Get query embedding
-        query_embedding = embedding_model.embed_query(query)
-        #print("Query Embedding (first 10):", query_embedding[:10])
-
-        # Retrieve documents
-        docs_with_scores = db.similarity_search_with_score(query, k=5)
+        # Retrieve documents with scores
+        docs_with_scores = db.similarity_search_with_score(
+            query,
+            k=5
+        )
         print("\nRetrieved Documents and Scores:")
         for i, (doc, score) in enumerate(docs_with_scores):
             print(f"Doc {i+1}: {doc.page_content} (Score: {score})")
