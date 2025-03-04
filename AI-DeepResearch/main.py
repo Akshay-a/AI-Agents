@@ -4,11 +4,14 @@ from sentence_transformers import SentenceTransformer
 from collections import deque
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # Configuration
-LLM_MODEL_NAME = "your_model_name"  # Replace with your model name
-LLM_TEMPERATURE = 0.7
-dimension = 384  # Embedding dimension for 'all-MiniLM-L6-v2'
+LLM_MODEL_NAME = "qwen2.5:7b"  
+LLM_TEMPERATURE = 0.6
+dimension = 384  
 
 # Initialize LLM
 llm = OllamaLLM(
@@ -19,21 +22,22 @@ llm = OllamaLLM(
     num_ctx=4096
 )
 
-# Initialize embedding model and FAISS index
+
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
-index = faiss.IndexFlatL2(dimension)  # L2 distance for similarity search
+index = faiss.IndexFlatL2(dimension)  
 
 class DeepResearchSimulator:
     def __init__(self):
-        self.context_vectors = []  # Store embeddings
+        self.context_vectors = []  
         self.context_data = []  # Store (query, response) pairs
         self.query_queue = deque()  # Queue of sub-queries
         self.visited_queries = set()  # Track explored queries
         self.initial_prompt_embedding = None
         self.max_depth = 7  # Limit exploration depth
-        self.relevance_threshold = 0.5  # Minimum relevance score
+        self.relevance_threshold = 0.39  # Minimum relevance score ---> needs to be fine tuned based on use case, this is just a starting point and can vary based on monitoring each use case of the app
+        #todo: the above relevance score threshold might not always be valid, and this needs to be fine tuned as it might eliminate some relevant data and we might miss this in research
 
-    def embed_text(self, text):
+    def embed_text(self, text):     
         """Generate embedding for text."""
         return embedder.encode(text, convert_to_tensor=False)
 
@@ -42,6 +46,7 @@ class DeepResearchSimulator:
         self.initial_prompt_embedding = self.embed_text(initial_prompt)
         initial_queries = self.generate_sub_queries(initial_prompt, "")
         for query in initial_queries:
+            logger.info(f"Exploring: {query}")
             self.query_queue.append((query, 0))  # (query, depth)
 
     def generate_sub_queries(self, prompt, context):
@@ -51,6 +56,7 @@ class DeepResearchSimulator:
         else:
             query_prompt = f"Generate 3 sub-questions to explore '{prompt}'."
         response = llm(query_prompt)
+        logger.info(f"Generated sub-queries for query{prompt}: {response}")
         return [q.strip() for q in response.strip().split("\n") if q.strip()]
 
     def generate_response(self, query):
@@ -84,10 +90,14 @@ class DeepResearchSimulator:
             return
         
         response = self.generate_response(query)
+        logger.info(f"Response for query '{query}': {response}")
         response_embedding = self.embed_text(response)
         relevance_score = self.evaluate_response(response_embedding)
         
+        logger.info(f"Relevance score for '{query}': {relevance_score}")
+
         if relevance_score > self.relevance_threshold:
+            
             self.add_to_context(query, response)
             self.visited_queries.add(query)
             new_queries = self.generate_sub_queries(query, response)
@@ -103,7 +113,7 @@ class DeepResearchSimulator:
         top_indices = index.search(np.array([self.initial_prompt_embedding], dtype='float32'), 5)[1][0]
         top_context = [self.context_data[i] for i in top_indices if i < len(self.context_data)]
         context_text = "\n".join([f"Q: {q}\nA: {a}" for q, a in top_context])
-        synthesis_prompt = f"Summarize this into a comprehensive answer:\n\n{context_text}"
+        synthesis_prompt = f"Summarize this into a comprehensive Research answer:\n\n{context_text}"
         return llm(synthesis_prompt).strip()
 
     def deep_research(self, initial_prompt):
@@ -111,11 +121,13 @@ class DeepResearchSimulator:
         self.initialize_exploration(initial_prompt)
         while self.query_queue and len(self.visited_queries) < self.max_depth:
             query, depth = self.query_queue.popleft()
+            logger.info(f"Exploring query: {query}, Depth: {depth}")
             self.explore_query(query, depth)
         return self.synthesize_answer()
 
 # Usage
 simulator = DeepResearchSimulator()
-initial_prompt = "What is the impact of AI on society?"
+initial_prompt = "Explain about Bitcoin and how it revolutionises payment?"
+logger.info(f"STARTING DEEP RESEARCH FOR: {initial_prompt}")
 final_answer = simulator.deep_research(initial_prompt)
 print("Final Answer:\n", final_answer)
