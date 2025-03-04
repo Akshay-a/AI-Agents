@@ -33,7 +33,7 @@ class DeepResearchSimulator:
         self.query_queue = deque()  # Queue of sub-queries
         self.visited_queries = set()  # Track explored queries
         self.initial_prompt_embedding = None
-        self.max_depth = 7  # Limit exploration depth
+        self.max_depth = 4  # Limit exploration depth
         self.relevance_threshold = 0.39  # Minimum relevance score ---> needs to be fine tuned based on use case, this is just a starting point and can vary based on monitoring each use case of the app
         #todo: the above relevance score threshold might not always be valid, and this needs to be fine tuned as it might eliminate some relevant data and we might miss this in research
 
@@ -64,7 +64,7 @@ class DeepResearchSimulator:
         return llm(query).strip()
 
     def evaluate_response(self, response_embedding):
-        """Evaluate relevance using cosine similarity."""
+        """Evaluate relevance using cosine similarity.This can be fine tunes as well"""
         similarity = cosine_similarity(
             self.initial_prompt_embedding.reshape(1, -1),
             response_embedding.reshape(1, -1)
