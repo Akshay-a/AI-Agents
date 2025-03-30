@@ -1,3 +1,12 @@
+Install Dependencies from requirements.txt file
+set up below 2 environment variables in a .env file:
+GOOGLE_API_KEY
+MCP_SERVER_URL ( Optional)
+
+How to Run the Program
+ - Run the mcp_server.py class first in a terminal, it will start the MCP server ( we can mock test a curl endpoint , it should be running in 8000 port)
+ - Run the main.py class, it will initiate a command line chat and you can chat with the Agent
+
 Below is the mermaid diagram
 ```mermaid
 
