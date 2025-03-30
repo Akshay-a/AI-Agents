@@ -1,0 +1,8 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+python-dotenv
+google-generativeai
+requests # To call the MCP server from the LLM agent
