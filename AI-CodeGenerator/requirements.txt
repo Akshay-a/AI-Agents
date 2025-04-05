@@ -1,0 +1,4 @@
+google-generativeai
+docker
+python-dotenv
+stdlib_list
