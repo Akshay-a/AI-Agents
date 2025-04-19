@@ -12,6 +12,7 @@ class TaskStatus(str, Enum):
 
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: Optional[str] = None # Link task to an overall research job
     description: str
     status: TaskStatus = TaskStatus.PENDING
     result: Optional[Any] = None
