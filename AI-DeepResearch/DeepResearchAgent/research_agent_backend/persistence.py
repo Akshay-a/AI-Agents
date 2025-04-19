@@ -20,10 +20,18 @@ def get_status_marker(status: TaskStatus) -> str:
     return "[?]"
 
 def save_tasks_to_md(tasks: Dict[str, Task]):
-    """Saves the current state of tasks to todo.md"""
+    """Saves the current state of tasks to todo.md, including job_id"""
     try:
-        # Ensure the directory exists (useful if TODO_FILENAME includes a path)
         os.makedirs(os.path.dirname(TODO_FILENAME) or '.', exist_ok=True)
+
+        # Group tasks by job_id for better readability
+        tasks_by_job: Dict[str, List[Task]] = {}
+        for task in tasks.values():
+             job_key = task.job_id or "Unassigned"
+             if job_key not in tasks_by_job:
+                 tasks_by_job[job_key] = []
+             tasks_by_job[job_key].append(task)
+
 
         with open(TODO_FILENAME, "w", encoding="utf-8") as f:
             f.write("# Research Task Todo List\n\n")
@@ -31,23 +39,34 @@ def save_tasks_to_md(tasks: Dict[str, Task]):
                 f.write("No tasks defined yet.\n")
                 return
 
-            # Maybe sort tasks or group them later; for now, just list them
-            for task_id, task in tasks.items():
-                marker = get_status_marker(task.status)
-                f.write(f"- {marker} {task.description} `(ID: {task_id})`\n")
-                if task.status == TaskStatus.ERROR and task.error_message:
-                    f.write(f"  - **Error:** {task.error_message}\n")
-                elif task.status == TaskStatus.COMPLETED and task.result:
-                     # Optionally add brief result summary if available and simple
-                     # f.write(f"  - Result: {str(task.result)[:50]}...\n")
-                     pass
+            # Sort jobs (optional, e.g., by job_id)
+            sorted_job_ids = sorted(tasks_by_job.keys())
 
-        logger.info(f"Successfully saved {len(tasks)} tasks to {TODO_FILENAME}")
+            for job_id in sorted_job_ids:
+                f.write(f"## Job ID: {job_id}\n\n")
+                job_tasks = tasks_by_job[job_id]
+                # Sort tasks within a job (e.g., by description or ID, optional)
+                # sorted_tasks = sorted(job_tasks, key=lambda t: t.id)
+                sorted_tasks = job_tasks # Keep original order for now
+
+                for task in sorted_tasks:
+                    marker = get_status_marker(task.status)
+                    f.write(f"- {marker} {task.description} `(TaskID: {task.id})`\n") # Keep TaskID clear
+                    if task.status == TaskStatus.ERROR and task.error_message:
+                        f.write(f"  - **Error:** {task.error_message}\n")
+                    elif task.status == TaskStatus.COMPLETED and task.result:
+                         # Avoid printing large results
+                         result_str = str(task.result)
+                         f.write(f"  - Result: {result_str[:100]}{'...' if len(result_str) > 100 else ''}\n")
+                f.write("\n") # Add space between jobs
+
+
+        logger.info(f"Successfully saved {len(tasks)} tasks across {len(tasks_by_job)} jobs to {TODO_FILENAME}")
 
     except IOError as e:
         logger.error(f"Failed to save tasks to {TODO_FILENAME}: {e}")
     except Exception as e:
-        logger.error(f"An unexpected error occurred while saving tasks: {e}")
+        logger.error(f"An unexpected error occurred while saving tasks: {e}", exc_info=True)
 
 
 # --- Loading tasks from MD ---
