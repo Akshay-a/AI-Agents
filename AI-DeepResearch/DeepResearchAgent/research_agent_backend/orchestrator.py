@@ -3,14 +3,16 @@ import logging
 from typing import Dict, Optional, List, Any
 from enum import Enum
 
-from models import Task, TaskStatus
+from models import Task, TaskStatus , JobResultsSummary
 from task_manager import TaskManager # Assuming TaskManager handles status updates/broadcasts
 from agents.planning import planning_agent # Import agent instances
 from agents.search import SearchAgent
-from agents.filtering import filtering_agent
+from agents.filtering import FilteringAgent
 # Import other agents later (Analysis, Reporting)
 
 logger = logging.getLogger(__name__)
+
+SEARCH_TASK_DELAY = 1.5
 
 class JobStatus(str, Enum): # This Enum is heart of managing all the jobs and their states
     IDLE = "IDLE"
@@ -27,6 +29,7 @@ class Orchestrator:
         self.pause_events: Dict[str, asyncio.Event] = {}
         self.job_tasks: Dict[str, asyncio.Task] = {} # To manage background tasks -> start with researching about task (that is the first task)
         self.search_agent = SearchAgent(task_manager=self.task_manager)
+        self.filtering_agent = FilteringAgent(task_manager=self.task_manager) 
 
     async def start_job(self, initial_task_id: str, topic: str):
         """Initiates and runs the research flow for a given job"""
@@ -136,50 +139,116 @@ class Orchestrator:
 
     async def _dispatch_task(self, task: Task):
         """Calls the appropriate agent based on task description. Agents now store their own results."""
-        logger.info(f"Dispatching task: {task.description} (ID: {task.id})")
+        logger.info(f"Dispatching task: {task.description} (ID: {task.id}) for Job {task.job_id}")
         desc_lower = task.description.lower()
+        task_completed_successfully = False # Flag to track if agent ran without error
 
-        if "plan research" in desc_lower:
-            topic = task.description.split(":")[-1].strip()
-            sub_task_descriptions = await planning_agent.run(topic=topic, job_id=task.job_id)
-            # Planning itself might store results, but here it returns descriptions
-            await self._handle_planning_completion(task, sub_task_descriptions)
-            # Planning task result (sub-tasks) are implicitly handled by adding tasks
-            # We can store the list of descriptions if needed for provenance
-            await self.task_manager.store_result(task.id, sub_task_descriptions)
+        try:
+            if "plan research" in desc_lower:
+                topic = task.description.split(":")[-1].strip()
+                sub_task_descriptions = await planning_agent.run(topic=topic, job_id=task.job_id)
+                await self._handle_planning_completion(task, sub_task_descriptions)
+                await self.task_manager.store_result(task.id, sub_task_descriptions)
+                task_completed_successfully = True
 
-        elif "search:" in desc_lower:
-            query = task.description.split(":")[-1].strip()
-            await self.search_agent.run(query=query, task_id=task.id, job_id=task.job_id)
-            # Result stored by search_agent internally using task_manager
+            elif "search:" in desc_lower:
+                await asyncio.sleep(SEARCH_TASK_DELAY)  # Simulate delay for search tasks
+                query = task.description.split(":")[-1].strip()
+                await self.search_agent.run(query=query, task_id=task.id, job_id=task.job_id)
+                task_completed_successfully = True
+                # Result stored by search_agent internally
 
-        elif "filter:" in desc_lower:
-            search_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Search:")
-            search_task_ids = [st.id for st in search_tasks]
-            if not search_task_ids:
-                 logger.warning(f"[Job {task.job_id} | Task {task.id}] Filter task found no preceding completed Search tasks.")
-                 await self.filtering_agent.run(search_task_ids=[], current_task_id=task.id, job_id=task.job_id)
+            elif "filter:" in desc_lower:
+                # Identify preceding search tasks for this job
+                search_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Search:")
+                search_task_ids = [st.id for st in search_tasks]
+
+                if not search_task_ids:
+                    logger.warning(f"[Job {task.job_id} | Task {task.id}] Filter task found no preceding completed Search tasks.")
+                    # Run filter even with empty list to potentially store an empty result
+                    await self.filtering_agent.run(search_task_ids=[], current_task_id=task.id, job_id=task.job_id)
+                else:
+                    logger.info(f"[Job {task.job_id} | Task {task.id}] Filter task will use results from search tasks: {search_task_ids}")
+                    await self.filtering_agent.run(search_task_ids=search_task_ids, current_task_id=task.id, job_id=task.job_id)
+
+                # --- START: Add Summary Broadcast ---
+                # Check if filter completed and get its result
+                filter_result = self.task_manager.get_result(task.id)
+                if filter_result and isinstance(filter_result, dict):
+                    filtered_items = filter_result.get("filtered_results", [])
+                    summary = JobResultsSummary(
+                        job_id=task.job_id,
+                        unique_sources_found=len(filtered_items),
+                        duplicates_removed=filter_result.get("duplicates_removed", 0),
+                        sources_analyzed_count=filter_result.get("sources_analyzed_count", len(search_task_ids)),
+                        # Get top 5 URLs/titles (if available)
+                        top_sources=[
+                            {"title": item.get("title", "N/A"), "url": item.get("url", "N/A")}
+                            for item in filtered_items[:5] if isinstance(item, dict)
+                        ]
+                    )
+                    await self.broadcast_job_summary(summary)
+                    task_completed_successfully = True # Mark as successful if result was processed
+                else:
+                     logger.warning(f"[Job {task.job_id} | Task {task.id}] Filter task completed, but no valid result dictionary found in TaskManager.")
+                     # Still mark as successful if the agent didn't raise an error, even if result missing
+                     task_completed_successfully = True
+                # --- END: Add Summary Broadcast ---
+
+            elif "analyze" in desc_lower or "synthesize" in desc_lower:
+                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis/Synthesis (Not Implemented Yet)")
+                await asyncio.sleep(1)
+                await self.task_manager.store_result(task.id, {"analysis": "Analysis completed (simulated)."})
+                task_completed_successfully = True
+
+            elif "generate report" in desc_lower:
+                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Report Generation (Not Implemented Yet)")
+                await asyncio.sleep(1)
+                await self.task_manager.store_result(task.id, {"report_summary": "Report generated (simulated)."})
+                task_completed_successfully = True
+
             else:
-                 logger.info(f"[Job {task.job_id} | Task {task.id}] Filter task will use results from search tasks: {search_task_ids}")
-                 await self.filtering_agent.run(search_task_ids=search_task_ids, current_task_id=task.id, job_id=task.job_id)
-            # Result stored by filtering_agent internally
+                logger.warning(f"No specific agent logic found for task: '{task.description}'. Marking as skipped.")
+                await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="No agent handler found for this task type.")
+                # Task was skipped, not successfully completed in the normal sense
+                task_completed_successfully = False # Explicitly false
 
-        elif "analyze" in desc_lower or "synthesize" in desc_lower:
-            logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis/Synthesis (Not Implemented Yet)")
-            await asyncio.sleep(1)
-            await self.task_manager.store_result(task.id, {"analysis": "Analysis completed (simulated)."})
+            # If the agent ran without raising an exception, mark task completed *if* it wasn't already skipped/errored
+            if task_completed_successfully:
+                current_task_state = self.task_manager.get_task(task.id)
+                if current_task_state and current_task_state.status == TaskStatus.RUNNING:
+                    await self.task_manager.update_task_status(
+                        task.id,
+                        TaskStatus.COMPLETED,
+                        detail="Task completed successfully by agent."
+                    )
+                elif current_task_state:
+                     logger.debug(f"Task {task.id} status is already {current_task_state.status}, not marking completed again.")
+                else:
+                     logger.warning(f"Task {task.id} not found after successful agent run. Cannot mark completed.")
 
-        elif "generate report" in desc_lower:
-            logger.info(f"[Job {task.job_id} | Task {task.id}] Running Report Generation (Not Implemented Yet)")
-            await asyncio.sleep(1)
-            await self.task_manager.store_result(task.id, {"report_summary": "Report generated (simulated)."})
 
-        else:
-            logger.warning(f"No specific agent logic found for task: '{task.description}'. Marking as skipped.")
-            # Mark skipped immediately within dispatch
-            await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="No agent handler found for this task type.")
+        except Exception as e:
+            # Handle errors raised *by the agent execution*
+            logger.error(f"Agent execution failed for task {task.id} ({task.description}): {e}", exc_info=True) # Log traceback here
+            error_msg = str(e)
+            # Ensure task exists before updating status to ERROR
+            if self.task_manager.get_task(task.id):
+                await self.task_manager.update_task_status(
+                    task.id,
+                    TaskStatus.ERROR,
+                    error_message=error_msg,
+                    detail=f"Agent failed: {error_msg[:100]}..."
+                )
+            else:
+                logger.error(f"Task {task.id} not found, cannot mark as ERROR after agent failure.")
 
+            # Pause the job - Moved this responsibility to the main loop (_run_research_flow)
+            # self.pause_events[task.job_id].set()
+            # await self.broadcast_job_status(task.job_id, JobStatus.PAUSED, f"Paused due to error in task {task.id}: {error_msg[:100]}...")
 
+            # Re-raise the exception so the main loop catches it and pauses
+            raise e
     async def _handle_planning_completion(self, planning_task: Task, sub_task_descriptions: List[str]):
         if not isinstance(sub_task_descriptions, list):
              logger.warning(f"Planner for task {planning_task.id} did not return a list of descriptions. Got: {type(sub_task_descriptions)}")
@@ -241,3 +310,9 @@ class Orchestrator:
             "detail": detail
         }
         await self.task_manager.connection_manager.broadcast_json(message) # Use TM's connection mgr
+
+    async def broadcast_job_summary(self, summary: JobResultsSummary):
+        """Broadcasts the research results summary via WebSocket."""
+        logger.info(f"Broadcasting results summary for Job {summary.job_id}: Found {summary.unique_sources_found} sources.")
+        # Use TaskManager's connection_manager instance
+        await self.task_manager.connection_manager.broadcast_json(summary.dict())
