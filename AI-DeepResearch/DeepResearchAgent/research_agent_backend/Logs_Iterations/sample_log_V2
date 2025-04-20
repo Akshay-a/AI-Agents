@@ -1,0 +1,208 @@
+Below log tracks same end to end workflow for a given research topic.
+2025-04-20 23:16:34,972 - main - INFO - Received research request for topic: Quantum Computing Basics
+2025-04-20 23:16:34,972 - task_manager - INFO - [Job None] Added task: Plan research for: Quantum Computing Basics (ID: e4392b53-2090-401f-a2fc-33a939b1cb90)
+2025-04-20 23:16:34,975 - persistence - INFO - Successfully saved 1 tasks across 1 jobs to todo.md
+2025-04-20 23:16:34,975 - main - INFO - Assigned Job ID e4392b53-2090-401f-a2fc-33a939b1cb90 based on initial task.
+2025-04-20 23:16:34,975 - persistence - INFO - Successfully saved 1 tasks across 1 jobs to todo.md
+2025-04-20 23:16:34,975 - main - INFO - Orchestrator job initiated for Job ID: e4392b53-2090-401f-a2fc-33a939b1cb90
+INFO:     127.0.0.1:55869 - "POST /start_research HTTP/1.1" 202 Accepted
+2025-04-20 23:16:34,975 - orchestrator - INFO - Starting job e4392b53-2090-401f-a2fc-33a939b1cb90 for topic: Quantum Computing Basics
+2025-04-20 23:16:34,975 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task e4392b53-2090-401f-a2fc-33a939b1cb90 (Plan research for: Quantum Computing Basics) to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:16:34,975 - persistence - INFO - Successfully saved 1 tasks across 1 jobs to todo.md
+2025-04-20 23:16:34,975 - orchestrator - INFO - Dispatching task: Plan research for: Quantum Computing Basics (ID: e4392b53-2090-401f-a2fc-33a939b1cb90) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:16:34,975 - agents.planning - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Planning Agent: Starting planning for topic 'Quantum Computing Basics'...
+2025-04-20 23:16:36,983 - agents.planning - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Planning Agent: Generated 4 sub-tasks.
+2025-04-20 23:16:36,983 - orchestrator - INFO - Planning task e4392b53-2090-401f-a2fc-33a939b1cb90 completed. Adding 4 sub-tasks for job e4392b53-2090-401f-a2fc-33a939b1cb90.
+2025-04-20 23:16:36,983 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Search: Key concepts of 'Quantum Computing Basics' (ID: 9fadc83f-9ed6-4351-b790-af5afe3901aa)
+2025-04-20 23:16:36,983 - persistence - INFO - Successfully saved 2 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,983 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Search: History of 'Quantum Computing Basics' (ID: ffa31198-5d84-4cd7-bf5f-793fd879ee01)
+2025-04-20 23:16:36,986 - persistence - INFO - Successfully saved 3 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,986 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Search: Current challenges in 'Quantum Computing Basics' (ID: 27a54e63-bc5f-4e44-82c7-eea49ec8495a)
+2025-04-20 23:16:36,986 - persistence - INFO - Successfully saved 4 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,986 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Filter: Consolidate search results for 'Quantum Computing Basics' (ID: 3a4a8b60-92f9-425b-a88d-2ecd70f134a2)
+2025-04-20 23:16:36,987 - persistence - INFO - Successfully saved 5 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,987 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Analyze & Synthesize findings for job e4392b53-2090-401f-a2fc-33a939b1cb90 (ID: e21ead5c-35b7-4eee-ad39-e8d3fd21470e)
+2025-04-20 23:16:36,987 - persistence - INFO - Successfully saved 6 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,987 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Added task: Generate report for job e4392b53-2090-401f-a2fc-33a939b1cb90 (ID: 39c47a21-3d59-457f-a853-1c883e4c5c5f)
+2025-04-20 23:16:36,987 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:16:36,987 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task e4392b53-2090-401f-a2fc-33a939b1cb90 (Plan research for: Quantum Computing Basics). Result type: list
+2025-04-20 23:16:36,987 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task e4392b53-2090-401f-a2fc-33a939b1cb90 (Plan research for: Quantum Computing Basics) to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:16:36,987 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:16:37,092 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 9fadc83f-9ed6-4351-b790-af5afe3901aa (Search: Key concepts of 'Quantum Computing Basics') to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:16:37,092 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:16:37,093 - orchestrator - INFO - Dispatching task: Search: Key concepts of 'Quantum Computing Basics' (ID: 9fadc83f-9ed6-4351-b790-af5afe3901aa) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:16:38,590 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Search Agent: Starting search for 'Key concepts of 'Quantum Computing Basics'' using DuckDuckGo...
+2025-04-20 23:16:38,590 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Attempting DuckDuckGo search (Attempt 1/4)...
+2025-04-20 23:16:38,717 - primp - INFO - response: https://duckduckgo.com/?q=Key+concepts+of+%27Quantum+Computing+Basics%27 200
+2025-04-20 23:16:39,365 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=Key+concepts+of+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=10&df=&vqd=4-9556615281657354770047476377086375163&bing_market=wt-WT&ex=-1 200
+2025-04-20 23:16:39,571 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=Key+concepts+of+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=0&df=&vqd=4-9556615281657354770047476377086375163&bing_market=wt-WT&ex=-1 200
+2025-04-20 23:16:39,600 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] DuckDuckGo search successful on attempt 1. Found 20 results.
+2025-04-20 23:16:39,600 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching content for 20 URLs...
+2025-04-20 23:16:39,602 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.scientificworldinfo.com/2024/09/quantum-computing-explained-key-concepts.html
+2025-04-20 23:16:39,603 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.bluequbit.io/quantum-computing-basics
+2025-04-20 23:16:39,603 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.edn.com/the-basics-of-quantum-computing-a-tutorial/
+2025-04-20 23:16:39,603 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.explainthatstuff.com/quantum-computing.html
+2025-04-20 23:16:39,604 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.allaboutcircuits.com/technical-articles/fundamentals-of-quantum-computing/
+2025-04-20 23:16:39,662 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] HTTP error 403 for https://www.allaboutcircuits.com/technical-articles/fundamentals-of-quantum-computing/: Forbidden
+2025-04-20 23:16:39,662 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://berttempleton.substack.com/p/the-basics-of-quantum-computing-a
+2025-04-20 23:16:39,862 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.ibm.com/think/topics/quantum-computing
+2025-04-20 23:16:40,226 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://argano.com/insights/articles/quantum-computing-key-concepts-developments-and-challenges.html
+2025-04-20 23:16:40,500 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.simplilearn.com/tutorials/machine-learning-tutorial/what-is-quantum-computing
+2025-04-20 23:16:40,596 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.baeldung.com/cs/quantum-computing
+2025-04-20 23:16:41,381 - trafilatura.core - WARNING - discarding data: None
+2025-04-20 23:16:41,381 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Trafilatura failed to extract main content from https://www.simplilearn.com/tutorials/machine-learning-tutorial/what-is-quantum-computing. Using raw snippet as fallback.
+2025-04-20 23:16:41,381 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.futurelearn.com/info/blog/what-is-quantum-computing
+2025-04-20 23:16:41,397 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] HTTP error 403 for https://www.baeldung.com/cs/quantum-computing: Forbidden
+2025-04-20 23:16:41,397 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.reference.com/science-technology/quantum-computing-key-terms-concepts-explained
+2025-04-20 23:16:41,571 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] HTTP error 403 for https://www.futurelearn.com/info/blog/what-is-quantum-computing: Forbidden
+2025-04-20 23:16:41,571 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://learn.microsoft.com/en-us/azure/quantum/overview-understanding-quantum-computing
+2025-04-20 23:16:41,871 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://medium.com/@AlexanderObregon/a-beginners-guide-to-quantum-computing-fundamentals-c11de9187892
+2025-04-20 23:16:42,047 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://risingwave.com/blog/beginners-guide-to-quantum-computing-for-dummies/
+2025-04-20 23:16:42,111 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.quantum-inspire.com/kbase/introduction-to-quantum-computing/
+2025-04-20 23:16:42,163 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.geeksforgeeks.org/introduction-quantum-computing/
+2025-04-20 23:16:42,222 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://www.quantum-inspire.com/kbase/
+2025-04-20 23:16:42,491 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://vajiramandravi.com/upsc-exam/quantum-computing/
+2025-04-20 23:16:42,666 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Fetching URL: https://online.nyit.edu/blog/quantum-computing-technology-understanding-the-basics
+2025-04-20 23:17:05,452 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Timeout fetching URL: https://www.edn.com/the-basics-of-quantum-computing-a-tutorial/
+2025-04-20 23:17:05,452 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Successfully processed 16 out of 20 search results.
+2025-04-20 23:17:05,452 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task 9fadc83f-9ed6-4351-b790-af5afe3901aa (Search: Key concepts of 'Quantum Computing Basics'). Result type: list
+2025-04-20 23:17:05,452 - agents.search - INFO - Stored 16 processed results for task 9fadc83f-9ed6-4351-b790-af5afe3901aa using provided TaskManager instance.
+2025-04-20 23:17:05,452 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 9fadc83f-9ed6-4351-b790-af5afe3901aa] Search Agent: Finished processing for query 'Key concepts of 'Quantum Computing Basics''. Results stored.
+2025-04-20 23:17:05,452 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 9fadc83f-9ed6-4351-b790-af5afe3901aa (Search: Key concepts of 'Quantum Computing Basics') to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:17:05,452 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:05,566 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task ffa31198-5d84-4cd7-bf5f-793fd879ee01 (Search: History of 'Quantum Computing Basics') to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:17:05,567 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:05,567 - orchestrator - INFO - Dispatching task: Search: History of 'Quantum Computing Basics' (ID: ffa31198-5d84-4cd7-bf5f-793fd879ee01) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:17:07,058 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Search Agent: Starting search for 'History of 'Quantum Computing Basics'' using DuckDuckGo...
+2025-04-20 23:17:07,058 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Attempting DuckDuckGo search (Attempt 1/4)...
+2025-04-20 23:17:07,183 - primp - INFO - response: https://duckduckgo.com/?q=History+of+%27Quantum+Computing+Basics%27 200
+2025-04-20 23:17:07,853 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=History+of+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=10&df=&vqd=4-184892761510395081623860738154573233018&bing_market=wt-WT&ex=-1 200
+2025-04-20 23:17:08,092 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=History+of+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=0&df=&vqd=4-184892761510395081623860738154573233018&bing_market=wt-WT&ex=-1 200
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] DuckDuckGo search successful on attempt 1. Found 20 results.
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching content for 20 URLs...
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://plato.stanford.edu/entries/qt-quantcomp/
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://quantumzeitgeist.com/history-of-quantum-computing/
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.britannica.com/technology/quantum-computer
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://qmunity.thequantuminsider.com/2024/04/29/history-of-quantum-computing-simplified/
+2025-04-20 23:17:08,092 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://quantumfrontiers.com/2025/03/20/the-first-and-second-centuries-of-quantum-mechanics/
+2025-04-20 23:17:08,296 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://quantumpedia.uk/a-brief-history-of-quantum-computing-e0bbd05893d0
+2025-04-20 23:17:08,377 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.livescience.com/technology/computing/history-of-quantum-computing-key-moments-that-shaped-the-future-of-computing
+2025-04-20 23:17:08,991 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: http://eitc.org/research-opportunities/high-performance-and-quantum-computing/quantum-computing-technology-and-roadmap/quantum-computing-history/quantum-computing-history
+2025-04-20 23:17:09,532 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.ibm.com/think/topics/quantum-computing
+2025-04-20 23:17:09,656 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://ntrs.nasa.gov/api/citations/20220016348/downloads/PakinRieffel_IntroToQC_SC22.pdf
+2025-04-20 23:17:09,781 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://arxiv.org/vc/quant-ph/papers/0511/0511061v1.pdf
+2025-04-20 23:17:10,056 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Skipping non-HTML content type 'application/pdf' for URL: https://arxiv.org/vc/quant-ph/papers/0511/0511061v1.pdf
+2025-04-20 23:17:10,056 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.researchgate.net/publication/331844245_Quantum_Computing_What_it_is_how_we_got_here_and_who's_working_on_it
+2025-04-20 23:17:10,246 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] HTTP error 403 for https://www.researchgate.net/publication/331844245_Quantum_Computing_What_it_is_how_we_got_here_and_who's_working_on_it: Forbidden
+2025-04-20 23:17:10,246 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://scholarworks.lib.csusb.edu/cgi/viewcontent.cgi?article=1410&context=jitim
+2025-04-20 23:17:10,510 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.slideshare.net/slideshow/quantum-computing-basics/243276653
+2025-04-20 23:17:10,837 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Skipping non-HTML content type 'application/pdf' for URL: https://ntrs.nasa.gov/api/citations/20220016348/downloads/PakinRieffel_IntroToQC_SC22.pdf
+2025-04-20 23:17:10,837 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.geeksforgeeks.org/introduction-quantum-computing/
+2025-04-20 23:17:10,887 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.btq.com/blog/quantum-computing-a-timeline
+2025-04-20 23:17:11,015 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://medium.com/@AlexanderObregon/a-beginners-guide-to-quantum-computing-fundamentals-c11de9187892
+2025-04-20 23:17:11,198 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.geeksforgeeks.org/introduction-of-quantum-computers/
+2025-04-20 23:17:11,300 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://www.tudelft.nl/en/about-tu-delft/strategy/vision-teams/quantum-computing/what-is-quantum/a-brief-history-of-quantum
+2025-04-20 23:17:11,559 - agents.search - WARNING - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Skipping non-HTML content type 'application/pdf' for URL: https://scholarworks.lib.csusb.edu/cgi/viewcontent.cgi?article=1410&context=jitim
+2025-04-20 23:17:11,559 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Fetching URL: https://en.wikipedia.org/wiki/Quantum_computing
+2025-04-20 23:17:13,667 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Successfully processed 16 out of 20 search results.
+2025-04-20 23:17:13,667 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task ffa31198-5d84-4cd7-bf5f-793fd879ee01 (Search: History of 'Quantum Computing Basics'). Result type: list
+2025-04-20 23:17:13,667 - agents.search - INFO - Stored 16 processed results for task ffa31198-5d84-4cd7-bf5f-793fd879ee01 using provided TaskManager instance.
+2025-04-20 23:17:13,667 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task ffa31198-5d84-4cd7-bf5f-793fd879ee01] Search Agent: Finished processing for query 'History of 'Quantum Computing Basics''. Results stored.
+2025-04-20 23:17:13,667 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task ffa31198-5d84-4cd7-bf5f-793fd879ee01 (Search: History of 'Quantum Computing Basics') to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:17:13,667 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:13,783 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 27a54e63-bc5f-4e44-82c7-eea49ec8495a (Search: Current challenges in 'Quantum Computing Basics') to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:17:13,783 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:13,783 - orchestrator - INFO - Dispatching task: Search: Current challenges in 'Quantum Computing Basics' (ID: 27a54e63-bc5f-4e44-82c7-eea49ec8495a) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:17:15,276 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 27a54e63-bc5f-4e44-82c7-eea49ec8495a] Search Agent: Starting search for 'Current challenges in 'Quantum Computing Basics'' using DuckDuckGo...
+2025-04-20 23:17:15,277 - agents.search - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 27a54e63-bc5f-4e44-82c7-eea49ec8495a] Attempting DuckDuckGo search (Attempt 1/4)...
+2025-04-20 23:17:15,427 - primp - INFO - response: https://duckduckgo.com/?q=Current+challenges+in+%27Quantum+Computing+Basics%27 200
+2025-04-20 23:17:15,580 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=Current+challenges+in+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=10&df=&vqd=4-54895710970279208668975333030499975667&bing_market=wt-WT&ex=-1 202
+2025-04-20 23:17:15,596 - primp - INFO - response: https://links.duckduckgo.com/d.js?q=Current+challenges+in+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=0&df=&vqd=4-54895710970279208668975333030499975667&bing_market=wt-WT&ex=-1 202
+2025-04-20 23:17:15,596 - orchestrator - ERROR - Agent execution failed for task 27a54e63-bc5f-4e44-82c7-eea49ec8495a (Search: Current challenges in 'Quantum Computing Basics'): name 'random' is not defined
+Traceback (most recent call last):
+File "D:\Projects\AI-Agents\AI-DeepResearch\DeepResearchAgent\research_agent_backend\agents\search.py", line 112, in _perform_duckduckgo_search_with_retry
+search_results: List[Dict[str, Any]] = ddgs.text(query, max_results=num_results)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "D:\Projects\AI-Agents\AI-AGENTS\Lib\site-packages\duckduckgo_search\duckduckgo_search.py", line 246, in text
+results = self._text_api(keywords, region, safesearch, timelimit, max_results)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "D:\Projects\AI-Agents\AI-AGENTS\Lib\site-packages\duckduckgo_search\duckduckgo_search.py", line 333, in _text_api
+raise e
+File "D:\Projects\AI-Agents\AI-AGENTS\Lib\site-packages\duckduckgo_search\duckduckgo_search.py", line 330, in _text_api
+for r in self._executor.map(_text_api_page, slist):
+File "C:\Python311\Lib\concurrent\futures_base.py", line 619, in result_iterator
+yield _result_or_cancel(fs.pop())
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "C:\Python311\Lib\concurrent\futures_base.py", line 317, in _result_or_cancel
+return fut.result(timeout)
+^^^^^^^^^^^^^^^^^^^
+File "C:\Python311\Lib\concurrent\futures_base.py", line 456, in result
+return self.__get_result()
+^^^^^^^^^^^^^^^^^^^
+File "C:\Python311\Lib\concurrent\futures_base.py", line 401, in __get_result
+raise self._exception
+File "C:\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+result = self.fn(*self.args, **self.kwargs)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "D:\Projects\AI-Agents\AI-AGENTS\Lib\site-packages\duckduckgo_search\duckduckgo_search.py", line 308, in _text_api_page
+resp_content = self._get_url("GET", "https://links.duckduckgo.com/d.js", params=payload)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "D:\Projects\AI-Agents\AI-AGENTS\Lib\site-packages\duckduckgo_search\duckduckgo_search.py", line 136, in _get_url
+raise RatelimitException(f"{resp.url} {resp.status_code} Ratelimit")
+duckduckgo_search.exceptions.RatelimitException: https://links.duckduckgo.com/d.js?q=Current+challenges+in+%27Quantum+Computing+Basics%27&kl=wt-wt&l=wt-wt&p=&s=0&df=&vqd=4-54895710970279208668975333030499975667&bing_market=wt-WT&ex=-1 202 Ratelimit
+During handling of the above exception, another exception occurred:
+Traceback (most recent call last):
+File "D:\Projects\AI-Agents\AI-DeepResearch\DeepResearchAgent\research_agent_backend\orchestrator.py", line 157, in _dispatch_task
+await self.search_agent.run(query=query, task_id=task.id, job_id=task.job_id)
+File "D:\Projects\AI-Agents\AI-DeepResearch\DeepResearchAgent\research_agent_backend\agents\search.py", line 46, in run
+search_results_list = await self._perform_duckduckgo_search_with_retry(query, num_results, task_id, job_id)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "D:\Projects\AI-Agents\AI-DeepResearch\DeepResearchAgent\research_agent_backend\agents\search.py", line 132, in _perform_duckduckgo_search_with_retry
+jitter = delay * random.uniform(0.1, 0.5)
+^^^^^^
+NameError: name 'random' is not defined
+2025-04-20 23:17:15,596 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 27a54e63-bc5f-4e44-82c7-eea49ec8495a (Search: Current challenges in 'Quantum Computing Basics') to TaskStatus.ERROR. Detail: Agent failed: name 'random' is not defined...
+2025-04-20 23:17:15,596 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:15,603 - orchestrator - ERROR - Error during execution or completion handling for task 27a54e63-bc5f-4e44-82c7-eea49ec8495a (Search: Current challenges in 'Quantum Computing Basics'): name 'random' is not defined
+2025-04-20 23:17:15,603 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 27a54e63-bc5f-4e44-82c7-eea49ec8495a (Search: Current challenges in 'Quantum Computing Basics') to TaskStatus.ERROR. Detail: Task failed: name 'random' is not defined...
+2025-04-20 23:17:15,603 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:15,715 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 is paused. Waiting for resume signal...
+2025-04-20 23:17:15,715 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 resumed.
+2025-04-20 23:17:15,715 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2 (Filter: Consolidate search results for 'Quantum Computing Basics') to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:17:15,715 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:15,715 - orchestrator - INFO - Dispatching task: Filter: Consolidate search results for 'Quantum Computing Basics' (ID: 3a4a8b60-92f9-425b-a88d-2ecd70f134a2) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:17:15,715 - orchestrator - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Filter task will use results from search tasks: ['9fadc83f-9ed6-4351-b790-af5afe3901aa', 'ffa31198-5d84-4cd7-bf5f-793fd879ee01']
+2025-04-20 23:17:15,715 - agents.filtering - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Filtering Agent: Starting filtering based on results from tasks: ['9fadc83f-9ed6-4351-b790-af5afe3901aa', 'ffa31198-5d84-4cd7-bf5f-793fd879ee01']
+2025-04-20 23:17:15,715 - agents.filtering - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Retrieved 16 items from search task 9fadc83f-9ed6-4351-b790-af5afe3901aa
+2025-04-20 23:17:15,715 - agents.filtering - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Retrieved 16 items from search task ffa31198-5d84-4cd7-bf5f-793fd879ee01
+2025-04-20 23:17:15,715 - agents.filtering - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Retrieved a total of 32 raw items to filter.
+2025-04-20 23:17:17,130 - agents.filtering - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2] Filtering complete. Kept 29 unique results based on URL, removed 3 potential duplicates.
+2025-04-20 23:17:17,130 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2 (Filter: Consolidate search results for 'Quantum Computing Basics'). Result type: dict
+2025-04-20 23:17:17,130 - agents.filtering - INFO - Stored filtered results for task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2.
+2025-04-20 23:17:17,130 - orchestrator - INFO - Broadcasting results summary for Job e4392b53-2090-401f-a2fc-33a939b1cb90: Found 29 sources.
+2025-04-20 23:17:17,130 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 3a4a8b60-92f9-425b-a88d-2ecd70f134a2 (Filter: Consolidate search results for 'Quantum Computing Basics') to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:17:17,130 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:17,231 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 is paused. Waiting for resume signal...
+2025-04-20 23:17:17,231 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 resumed.
+2025-04-20 23:17:17,231 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task e21ead5c-35b7-4eee-ad39-e8d3fd21470e (Analyze & Synthesize findings for job e4392b53-2090-401f-a2fc-33a939b1cb90) to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:17:17,232 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:17,232 - orchestrator - INFO - Dispatching task: Analyze & Synthesize findings for job e4392b53-2090-401f-a2fc-33a939b1cb90 (ID: e21ead5c-35b7-4eee-ad39-e8d3fd21470e) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:17:17,232 - orchestrator - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task e21ead5c-35b7-4eee-ad39-e8d3fd21470e] Running Analysis/Synthesis (Not Implemented Yet)
+2025-04-20 23:17:18,235 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task e21ead5c-35b7-4eee-ad39-e8d3fd21470e (Analyze & Synthesize findings for job e4392b53-2090-401f-a2fc-33a939b1cb90). Result type: dict
+2025-04-20 23:17:18,235 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task e21ead5c-35b7-4eee-ad39-e8d3fd21470e (Analyze & Synthesize findings for job e4392b53-2090-401f-a2fc-33a939b1cb90) to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:17:18,235 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:18,349 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 is paused. Waiting for resume signal...
+2025-04-20 23:17:18,349 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 resumed.
+2025-04-20 23:17:18,350 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 39c47a21-3d59-457f-a853-1c883e4c5c5f (Generate report for job e4392b53-2090-401f-a2fc-33a939b1cb90) to TaskStatus.RUNNING. Detail: Orchestrator picked up task.
+2025-04-20 23:17:18,350 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:18,350 - orchestrator - INFO - Dispatching task: Generate report for job e4392b53-2090-401f-a2fc-33a939b1cb90 (ID: 39c47a21-3d59-457f-a853-1c883e4c5c5f) for Job e4392b53-2090-401f-a2fc-33a939b1cb90
+2025-04-20 23:17:18,350 - orchestrator - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90 | Task 39c47a21-3d59-457f-a853-1c883e4c5c5f] Running Report Generation (Not Implemented Yet)
+2025-04-20 23:17:19,368 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Stored result for task 39c47a21-3d59-457f-a853-1c883e4c5c5f (Generate report for job e4392b53-2090-401f-a2fc-33a939b1cb90). Result type: dict
+2025-04-20 23:17:19,369 - task_manager - INFO - [Job e4392b53-2090-401f-a2fc-33a939b1cb90] Updating task 39c47a21-3d59-457f-a853-1c883e4c5c5f (Generate report for job e4392b53-2090-401f-a2fc-33a939b1cb90) to TaskStatus.COMPLETED. Detail: Task completed successfully by agent.
+2025-04-20 23:17:19,370 - persistence - INFO - Successfully saved 7 tasks across 1 jobs to todo.md
+2025-04-20 23:17:19,482 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 is paused. Waiting for resume signal...
+2025-04-20 23:17:19,482 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90 resumed.
+2025-04-20 23:17:19,482 - orchestrator - INFO - Job e4392b53-2090-401f-a2fc-33a939b1cb90: No more pending or running tasks.
+2025-04-20 23:17:19,482 - orchestrator - WARNING - Job e4392b53-2090-401f-a2fc-33a939b1cb90 finished, but with errors or skipped tasks.
+2025-04-20 23:17:19,482 - orchestrator - INFO - Exiting research flow loop for job e4392b53-2090-401f-a2fc-33a939b1cb90. Final status: JobStatus.FAILED
+INFO:     Shutting down
