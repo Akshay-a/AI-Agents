@@ -1,24 +1,21 @@
+
 import asyncio
 import os
 import logging
 from typing import List, Dict, Any, Optional
 import aiohttp
 from trafilatura import extract
-from serpapi import SerpApiClient # Use SerpApi client
+from duckduckgo_search import AsyncDDGS  # Use DuckDuckGo search
 import json # Import json for structured logging/results
-from dotenv import load_dotenv
-
+import random # For jitter in retry logic
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-load_dotenv() 
-# Load API Key - Ensure this is set in your environment
-SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 
 # --- Constants ---
-DEFAULT_NUM_RESULTS = 10
+DEFAULT_NUM_RESULTS = 20
 MAX_CONCURRENT_FETCHES = 5
-REQUEST_TIMEOUT = 15 # seconds
+REQUEST_TIMEOUT = 25 # seconds
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 class SearchAgent:
@@ -28,7 +25,7 @@ class SearchAgent:
 
     async def run(self, query: str, task_id: str, job_id: str, num_results: int = DEFAULT_NUM_RESULTS) -> None:
         """
-        Performs a search using a Meta-Search API (SerpApi), fetches content asynchronously,
+        Performs a search using DuckDuckGo, fetches content asynchronously,
         extracts text, and stores results in the TaskManager.
 
         Args:
@@ -41,22 +38,15 @@ class SearchAgent:
             None. Results are stored via the TaskManager.
 
         Raises:
-            ValueError: If the SerpApi API key is missing.
             RuntimeError: If the search API call fails or major errors occur.
         """
-        logger.info(f"[Job {job_id} | Task {task_id}] Search Agent: Starting search for '{query}'...")
+        logger.info(f"[Job {job_id} | Task {task_id}] Search Agent: Starting search for '{query}' using DuckDuckGo...")
 
-        if not SERPAPI_API_KEY:
-            logger.error(f"[Job {job_id} | Task {task_id}] SerpApi API key (SERPAPI_API_KEY) not found in environment variables.")
-            raise ValueError("SerpApi API key not configured.")
-
-        # 1. Perform Search using SerpApi
-        search_results_list = await self._perform_serpapi_search(query, num_results, task_id, job_id)
+        # 1. Perform Search using DuckDuckGo  , replaced below method with new retry method to handle rate limits
+        search_results_list = await self._perform_duckduckgo_search_with_retry(query, num_results, task_id, job_id)
 
         if not search_results_list:
             logger.warning(f"[Job {job_id} | Task {task_id}] No search results found for query '{query}'.")
-            # Store empty results? Or let the orchestrator handle this?
-            # For now, store empty list. Task status will be updated by orchestrator later.
             await self._store_results(task_id, [])
             return # Nothing more to do
 
@@ -65,10 +55,10 @@ class SearchAgent:
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_FETCHES)
         fetch_tasks = []
 
-        # Use a single session for connection pooling
+        # **Use a single session for connection pooling -> aiohttp when requesting multiple URLs, it tries to open and close conn for each req so we are pooling connections for efficientcy**
         async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
             for result_item in search_results_list:
-                url = result_item.get('link')
+                url = result_item.get('link') # Changed from 'href' to 'link' to match DuckDuckGo's response structure
                 if url:
                     fetch_tasks.append(
                         self._fetch_and_extract(session, semaphore, url, result_item, task_id, job_id)
@@ -86,46 +76,94 @@ class SearchAgent:
         logger.info(f"[Job {job_id} | Task {task_id}] Search Agent: Finished processing for query '{query}'. Results stored.")
 
 
-    async def _perform_serpapi_search(self, query: str, num_results: int, task_id: str, job_id: str) -> List[Dict[str, Any]]:
-        """Performs the actual search using SerpApi client."""
-        params = {
-            "q": query,
-            "num": num_results,
-            "api_key": SERPAPI_API_KEY,
-            "engine": "google", # Specify engine (e.g., google, bing)
-            # Add other parameters like location, gl, hl etc. if needed
-        }
+    async def _perform_duckduckgo_search(self, query: str, num_results: int, task_id: str, job_id: str) -> List[Dict[str, Any]]:
+        """Performs the actual search using the duckduckgo_search library."""
         try:
-            logger.debug(f"[Job {job_id} | Task {task_id}] Calling SerpApi with query: {query}")
-            client = SerpApiClient(params)
-            results = client.get_dict() # Synchronous client call, consider async version if library supports it
+            logger.info(f"[Job {job_id} | Task {task_id}] Calling DuckDuckGo search with query: {query}")
+            results = []
+            async with AsyncDDGS() as ddgs:
+                 async for r in ddgs.text(query, max_results=num_results):
+                     # Adapt the result structure to match what _fetch_and_extract expects
+                     results.append({
+                         'link': r.get('href'), # Original key is 'href'
+                         'title': r.get('title'),
+                         'snippet': r.get('body'), # Original key is 'body'
+                         # Add any other fields from 'r' if needed later
+                     })
 
-            if "error" in results:
-                 error_msg = results["error"]
-                 logger.error(f"[Job {job_id} | Task {task_id}] SerpApi search failed: {error_msg}")
-                 raise RuntimeError(f"SerpApi Error: {error_msg}")
-
-            organic_results = results.get("organic_results", [])
-            logger.info(f"[Job {job_id} | Task {task_id}] SerpApi returned {len(organic_results)} organic results.")
-            return organic_results
+            logger.info(f"[Job {job_id} | Task {task_id}] DuckDuckGo returned {len(results)} results.")
+            return results
 
         except Exception as e:
-            logger.error(f"[Job {job_id} | Task {task_id}] Error during SerpApi call: {e}", exc_info=True)
+            logger.error(f"[Job {job_id} | Task {task_id}] Error during DuckDuckGo search call: {e}", exc_info=True)
             # Re-raise as a runtime error for the orchestrator to catch
-            raise RuntimeError(f"Failed to execute search via SerpApi: {e}")
+            raise RuntimeError(f"Failed to execute search via DuckDuckGo: {e}")
+    
+    async def _perform_duckduckgo_search_with_retry(self, query: str, num_results: int, task_id: str, job_id: str, max_retries: int = 3, initial_delay: float = 2.0) -> List[Dict[str, Any]]:
+        """Performs DDG search with exponential backoff on rate limit errors."""
+        retries = 0
+        delay = initial_delay
+        while retries <= max_retries:
+            try:
+                logger.info(f"[Job {job_id} | Task {task_id}] Attempting DuckDuckGo search (Attempt {retries + 1}/{max_retries + 1})...")
+                results = []
+                # Use timeout within DDGS context manager if available, otherwise rely on overall request timeout
+                async with AsyncDDGS(timeout=20) as ddgs: # Added timeout
+                     search_results: List[Dict[str, Any]] = ddgs.text(query, max_results=num_results)
+                     for r in search_results:
+                         results.append({
+                             'link': r.get('href'),
+                             'title': r.get('title'),
+                             'snippet': r.get('body'),
+                         })
+
+                logger.info(f"[Job {job_id} | Task {task_id}] DuckDuckGo search successful on attempt {retries + 1}. Found {len(results)} results.")
+                return results
+
+            # Catch the specific RuntimeError potentially indicating rate limit, or broader exceptions
+            except Exception as e:
+                # Check if the error message likely indicates a rate limit (based on the observed error)
+                # This is fragile as the error message could change. A better check would be specific exception type if library provided one.
+                is_rate_limit_error = "Ratelimit" in str(e) or "rate limit" in str(e).lower() or (isinstance(e, RuntimeError) and "DuckDuckGo" in str(e))
+
+                if is_rate_limit_error and retries < max_retries:
+                    retries += 1
+                    # Add jitter: random small variation to the delay
+                    jitter = delay * random.uniform(0.1, 0.5)
+                    wait_time = delay + jitter
+                    logger.warning(f"[Job {job_id} | Task {task_id}] Rate limit detected (or suspected) on attempt {retries}. Retrying in {wait_time:.2f} seconds... Error: {e}")
+                    await asyncio.sleep(wait_time)
+                    delay *= 2 # Exponential backoff
+                else:
+                    # Max retries reached or it's a different kind of error
+                    logger.error(f"[Job {job_id} | Task {task_id}] Error during DuckDuckGo search call after {retries + 1} attempts: {e}", exc_info=True)
+                    # Re-raise as a runtime error for the orchestrator to catch
+                    raise RuntimeError(f"Failed to execute search via DuckDuckGo after {retries + 1} attempts: {e}")
+
+        # Should not be reached if max_retries > 0, but as a fallback
+        logger.error(f"[Job {job_id} | Task {task_id}] Exhausted all retries for DuckDuckGo search.")
+        raise RuntimeError("Exhausted all retries for DuckDuckGo search.")
 
 
     async def _fetch_and_extract(self, session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, url: str, search_result_item: Dict[str, Any], task_id: str, job_id: str) -> Optional[Dict[str, Any]]:
         """Fetches HTML content from a URL and extracts text using trafilatura."""
         async with semaphore: # Limit concurrency
             try:
-                logger.debug(f"[Job {job_id} | Task {task_id}] Fetching URL: {url}")
-                async with session.get(url, timeout=REQUEST_TIMEOUT, ssl=False) as response: # Added ssl=False for potential SSL issues
+                logger.info(f"[Job {job_id} | Task {task_id}] Fetching URL: {url}")
+                # Some sites might block non-browser user agents, keep the standard one
+                async with session.get(url, timeout=REQUEST_TIMEOUT, ssl=False, allow_redirects=True) as response: # Added allow_redirects
+                    # Check if the content type suggests it's downloadable (PDF, DOC etc.) rather than HTML
+                    content_type = response.headers.get('Content-Type', '').lower()
+                    if not ('html' in content_type or 'text' in content_type) and response.status == 200:
+                         logger.warning(f"[Job {job_id} | Task {task_id}] Skipping non-HTML content type '{content_type}' for URL: {url}")
+                         return None # Skip non-HTML content that trafilatura likely can't handle
+
                     response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
                     html_content = await response.text()
 
                     # Extract text
-                    extracted_text = extract(html_content, include_comments=False, include_tables=False)
+                    # Use favor_recall=True for potentially more text, though maybe less precise main content
+                    extracted_text = extract(html_content, include_comments=False, include_tables=True, favor_recall=True) # Keep tables, might be relevant
 
                     if extracted_text:
                         logger.debug(f"[Job {job_id} | Task {task_id}] Successfully extracted text from {url} (length: {len(extracted_text)})")
@@ -133,51 +171,63 @@ class SearchAgent:
                             'url': url,
                             'title': search_result_item.get('title', ''),
                             'extracted_text': extracted_text,
-                            'raw_snippet': search_result_item.get('snippet', '')
+                            'raw_snippet': search_result_item.get('snippet', '') # Changed from 'raw_snippet'
                         }
                     else:
-                        logger.warning(f"[Job {job_id} | Task {task_id}] Trafilatura failed to extract main content from {url}. Skipping.")
-                        return None
+                        logger.warning(f"[Job {job_id} | Task {task_id}] Trafilatura failed to extract main content from {url}. Using raw snippet as fallback.")
+                        # Fallback: Use the snippet from search results if extraction fails
+                        raw_snippet = search_result_item.get('snippet')
+                        if raw_snippet:
+                             return {
+                                'url': url,
+                                'title': search_result_item.get('title', ''),
+                                'extracted_text': raw_snippet, # Use snippet as extracted text
+                                'raw_snippet': raw_snippet
+                            }
+                        else:
+                            logger.warning(f"[Job {job_id} | Task {task_id}] No content extracted and no raw snippet available for {url}. Skipping.")
+                            return None
 
+
+            except aiohttp.ClientResponseError as e:
+                 # Log specific HTTP errors
+                 logger.warning(f"[Job {job_id} | Task {task_id}] HTTP error {e.status} for {url}: {e.message}")
+                 return None
             except aiohttp.ClientError as e:
-                logger.warning(f"[Job {job_id} | Task {task_id}] HTTP fetch error for {url}: {e}")
-                return None
+                 # General client errors (connection issues, etc.)
+                 logger.warning(f"[Job {job_id} | Task {task_id}] Client error fetching {url}: {e}")
+                 return None
             except asyncio.TimeoutError:
                 logger.warning(f"[Job {job_id} | Task {task_id}] Timeout fetching URL: {url}")
                 return None
             except Exception as e:
-                logger.error(f"[Job {job_id} | Task {task_id}] Error processing URL {url}: {e}", exc_info=False) # Log error but don't spam traceback for every URL failure
+                # Catch-all for unexpected errors during fetch/extraction
+                logger.error(f"[Job {job_id} | Task {task_id}] Error processing URL {url}: {e}", exc_info=False) # Log error but don't spam traceback
                 return None
 
     async def _store_results(self, task_id: str, results: List[Dict[str, Any]]):
         """Stores the processed results in the TaskManager."""
         if not self.task_manager:
              logger.error(f"TaskManager reference not available in SearchAgent. Cannot store results for task {task_id}.")
-             # This indicates an initialization problem.
-             # For now, we'll try to import and use the global instance if available (not ideal)
+             # This indicates an initialization problem. Attempt to use global instance as fallback.
              try:
-                 from task_manager import task_manager # Assuming a global instance might exist
+                 # Dynamic import might hide dependency issues, use cautiously.
+                 from ..task_manager import task_manager # Adjusted import path assuming task_manager.py is one level up
                  if task_manager:
                       await task_manager.store_result(task_id, results)
                       logger.info(f"Stored {len(results)} processed results for task {task_id} using globally accessed TaskManager.")
                  else:
-                      raise ImportError("Global task_manager not found.")
+                      raise ImportError("Global task_manager not found or resolved.")
              except ImportError as e:
-                  logger.critical(f"Failed to store results for task {task_id}. TaskManager not available: {e}")
-                  # In a real scenario, this might need to raise an exception to halt the process cleanly.
-                  # For now, log critical error and proceed.
-                  pass
+                  logger.critical(f"Failed to store results for task {task_id}. TaskManager not available via instance or global import: {e}")
+                  # Consider raising an exception here to halt the job if results can't be stored.
+                  pass # Current behavior: Log critical error and continue.
         else:
             # Use the instance variable if it was provided during initialization
             await self.task_manager.store_result(task_id, results)
             logger.info(f"Stored {len(results)} processed results for task {task_id} using provided TaskManager instance.")
 
 
-# Instantiate the agent (consider dependency injection later)
-# This global instantiation might be problematic if task_manager isn't ready
-# We will rely on the Orchestrator passing the correct task_manager instance or method access.
-# A factory function or dependency injection framework would be better.
-# For now, modify the run method to potentially receive the store_result callback.
-# Let's adjust Orchestrator to pass the storage mechanism.
-
-# search_agent = SearchAgent() # Defer instantiation or handle dependencies
+# Note: Instantiation logic remains outside this class.
+# The orchestrator or main script should handle creating SearchAgent instances
+# and potentially providing the task_manager dependency.
