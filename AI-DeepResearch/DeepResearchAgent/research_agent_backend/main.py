@@ -43,13 +43,21 @@ html = """
         <title>Research Agent Test</title>
         <style>
             body { font-family: sans-serif; }
-            #messages li { margin-bottom: 5px; padding: 3px; border-radius: 3px; }
+            #messages li { margin-bottom: 5px; padding: 5px; border-radius: 3px; list-style: none; border: 1px solid #ddd;}
             .status-PENDING { background-color: #eee; }
-            .status-RUNNING { background-color: #e0f7fa; }
-            .status-COMPLETED { background-color: #e8f5e9; }
-            .status-ERROR { background-color: #ffebee; font-weight: bold; }
-            .status-SKIPPED { background-color: #fffde7; }
+            .status-RUNNING { background-color: #e0f7fa; border-left: 3px solid #00bcd4; }
+            .status-COMPLETED { background-color: #e8f5e9; border-left: 3px solid #4caf50; }
+            .status-ERROR { background-color: #ffebee; border-left: 3px solid #f44336; font-weight: bold; }
+            .status-SKIPPED { background-color: #fffde7; border-left: 3px solid #ffeb3b; }
             .type-job_status { background-color: #e1f5fe; border-left: 3px solid #0288d1; font-weight: bold; margin-top: 10px;}
+            /* --- NEW STYLE for Summary --- */
+            .type-job_results_summary { background-color: #f3e5f5; border-left: 3px solid #8e24aa; margin-top: 10px; padding-bottom: 10px; }
+            .type-job_results_summary ul { margin-top: 5px; margin-bottom: 0; padding-left: 20px; }
+            .type-job_results_summary li { border: none; padding: 2px 0; margin: 0; font-size: 0.9em; }
+            .info { color: #333; font-weight: normal; }
+            .error { color: red; }
+            .warning { color: orange; }
+            .system { color: green; font-style: italic; }
         </style>
     </head>
     <body>
@@ -63,13 +71,12 @@ html = """
             <label>Command: <input type="text" id="commandInput" autocomplete="off" value="skip" list="commands"/></label>
             <datalist id="commands"><option value="skip"><option value="resume"></datalist><br>
             <label>Task ID: <input type="text" id="taskIdInput" autocomplete="off" value="" placeholder="Task ID for skip/resume"/></label><br>
-            <!-- <label>Payload (JSON): <input type="text" id="payloadInput" autocomplete="off" value="{}"/></label><br> -->
             <button>Send Command (Skip/Resume Task)</button>
         </form>
          <hr>
          <h2>Initiate Research:</h2>
          <form action="" onsubmit="startResearch(event)">
-             <label>Topic: <input type="text" id="topicInput" autocomplete="off" value="Artificial Intelligence"/></label>
+             <label>Topic: <input type="text" id="topicInput" autocomplete="off" value="Quantum Computing Basics"/></label>
              <button>Start Research</button>
          </form>
 
@@ -78,134 +85,145 @@ html = """
             var messages = document.getElementById('messages');
 
             ws.onopen = function(event) {
-                var li = document.createElement('li');
-                li.textContent = "WebSocket Connected.";
-                li.style.color = "green";
-                messages.appendChild(li);
+                addMessage("WebSocket Connected.", "system");
             };
 
             ws.onmessage = function(event) {
-                var message = document.createElement('li');
                 var data;
                 try {
                     data = JSON.parse(event.data);
-                    // message.textContent = event.data; // Raw JSON can be noisy
-
-                    // Add specific styling based on message type or status
-                    if (data.type === 'job_status') {
-                        message.classList.add('type-job_status');
-                        message.textContent = `[JOB ${data.job_id}] Status: ${data.status} - ${data.detail}`;
-                    } else if (data.task_id && data.status) { // Assume task update
-                         message.classList.add(`status-${data.status}`);
-                         let detailText = data.detail || '';
-                         // Truncate long details
-                         if (detailText.length > 150) detailText = detailText.substring(0, 150) + '...';
-                         message.textContent = `[TASK ${data.task_id}] Status: ${data.status} - ${detailText} (Job: ${data.job_id || 'N/A'})`;
-
-                         // Make Task ID clickable/copyable for easier command use
-                         message.title = `Click to copy Task ID: ${data.task_id}`;
-                         message.style.cursor = 'pointer';
-                         message.onclick = () => {
-                            navigator.clipboard.writeText(data.task_id).then(() => {
-                                console.log(`Copied Task ID: ${data.task_id}`);
-                                document.getElementById('taskIdInput').value = data.task_id;
-                            }, (err) => {
-                                console.error('Failed to copy Task ID: ', err);
-                            });
-                         };
-
-                    } else if (data.type === 'initial_state') {
-                        message.textContent = `Received initial state with ${data.tasks.length} tasks.`;
-                         // Optionally list initial tasks
-                         data.tasks.forEach(task => {
-                             var taskLi = document.createElement('li');
-                             taskLi.classList.add(`status-${task.status}`);
-                             let detailText = task.description || '';
-                             if (detailText.length > 150) detailText = detailText.substring(0, 150) + '...';
-                             taskLi.textContent = `[INITIAL TASK ${task.id}] Status: ${task.status} - ${detailText} (Job: ${task.job_id || 'N/A'})`;
-                             taskLi.title = `Click to copy Task ID: ${task.id}`;
-                             taskLi.style.cursor = 'pointer';
-                             taskLi.onclick = () => { navigator.clipboard.writeText(task.id); document.getElementById('taskIdInput').value = task.id; };
-                             messages.appendChild(taskLi);
-                         });
-                         return; // Don't add the 'initial_state' meta message itself
-                    } else if (data.error) {
-                         message.style.color = "red";
-                         message.textContent = `[ERROR] ${data.error}`;
-                    } else if (data.warning) {
-                         message.style.color = "orange";
-                         message.textContent = `[WARNING] ${data.warning}`;
-                    }
-                     else {
-                        message.textContent = event.data; // Fallback for other messages
-                    }
-
+                    handleMessage(data);
                 } catch (e) {
-                    message.textContent = event.data; // Display as raw text if not JSON
+                    addMessage("Received non-JSON: " + event.data, "warning");
                 }
-                // Prepend new messages
-                messages.insertBefore(message, messages.firstChild);
             };
 
             ws.onerror = function(event) {
-                 var li = document.createElement('li');
-                 li.textContent = "WebSocket Error.";
-                 li.style.color = "red";
-                 messages.appendChild(li);
+                 addMessage("WebSocket Error.", "error");
                  console.error("WebSocket Error: ", event);
             };
 
              ws.onclose = function(event) {
-                 var li = document.createElement('li');
-                 li.textContent = "WebSocket Closed.";
-                 li.style.color = "orange";
-                 messages.appendChild(li);
+                 addMessage("WebSocket Closed.", "warning");
                  console.log("WebSocket Closed:", event);
             };
 
+            function handleMessage(data) {
+                var message = document.createElement('li');
+                var content = '';
+
+                if (data.type === 'job_status') {
+                    message.classList.add('type-job_status');
+                    content = `[JOB ${data.job_id}] Status: ${data.status} - ${data.detail}`;
+                }
+                // --- START: Handle Summary Message ---
+                else if (data.type === 'job_results_summary') {
+                    message.classList.add('type-job_results_summary');
+                    content = `<b>[JOB ${data.job_id}] Research Phase Summary:</b><br>` +
+                              `  Found <b>${data.unique_sources_found}</b> unique sources (analyzed ${data.sources_analyzed_count}, removed ${data.duplicates_removed} duplicates).`;
+                    if (data.top_sources && data.top_sources.length > 0) {
+                        content += "<br>  Top sources found:";
+                        var sourceList = "<ul>";
+                        data.top_sources.forEach(source => {
+                            sourceList += `<li>${source.title || 'No Title'} (<a href="${source.url}" target="_blank" rel="noopener noreferrer">${source.url}</a>)</li>`;
+                        });
+                        sourceList += "</ul>";
+                        content += sourceList;
+                    }
+                }
+                // --- END: Handle Summary Message ---
+                else if (data.task_id && data.status) { // Assume task update
+                     message.classList.add(`status-${data.status}`);
+                     let detailText = data.detail || '';
+                     if (detailText.length > 150) detailText = detailText.substring(0, 150) + '...';
+                     content = `[TASK ${data.task_id}] Status: <b>${data.status}</b> - ${detailText} (Job: ${data.job_id || 'N/A'})`;
+                     message.title = `Click to copy Task ID: ${data.task_id}`;
+                     message.style.cursor = 'pointer';
+                     message.onclick = () => { copyToClipboard(data.task_id, 'Task'); };
+                } else if (data.type === 'initial_state') {
+                    addMessage(`Received initial state with ${data.tasks.length} tasks.`, "info");
+                     data.tasks.forEach(task => {
+                         var taskLi = document.createElement('li');
+                         taskLi.classList.add(`status-${task.status}`);
+                         let detailText = task.description || '';
+                         if (detailText.length > 150) detailText = detailText.substring(0, 150) + '...';
+                         taskLi.innerHTML = `[INITIAL TASK ${task.id}] Status: <b>${task.status}</b> - ${detailText} (Job: ${task.job_id || 'N/A'})`;
+                         taskLi.title = `Click to copy Task ID: ${task.id}`;
+                         taskLi.style.cursor = 'pointer';
+                         taskLi.onclick = () => { copyToClipboard(task.id, 'Task'); };
+                         messages.insertBefore(taskLi, messages.firstChild);
+                     });
+                     return; // Don't add the 'initial_state' meta message itself
+                } else if (data.error) {
+                     content = `[ERROR] ${data.error}`;
+                     message.classList.add("error");
+                } else if (data.warning) {
+                     content = `[WARNING] ${data.warning}`;
+                     message.classList.add("warning");
+                } else {
+                    content = "Received unknown message format: " + JSON.stringify(data);
+                    message.classList.add("info");
+                }
+
+                message.innerHTML = content; // Use innerHTML to render bold tags, links etc.
+                messages.insertBefore(message, messages.firstChild);
+            }
+
+            // Helper function to add simple text messages
+            function addMessage(text, type = "info") {
+                 var li = document.createElement('li');
+                 li.textContent = text;
+                 li.classList.add(type);
+                 messages.insertBefore(li, messages.firstChild);
+            }
+
+            // Helper function for copying ID
+            function copyToClipboard(text, type) {
+                navigator.clipboard.writeText(text).then(() => {
+                    console.log(`Copied ${type} ID: ${text}`);
+                    document.getElementById('taskIdInput').value = text; // Populate input field
+                }, (err) => {
+                    console.error(`Failed to copy ${type} ID: `, err);
+                    alert(`Failed to copy ${type} ID.`);
+                });
+            }
+
             function sendCommand(event) {
-                var command = document.getElementById("commandInput").value;
+                // ... (keep sendCommand function exactly as it was) ...
+                 var command = document.getElementById("commandInput").value;
                 var taskId = document.getElementById("taskIdInput").value;
-                // var payloadStr = document.getElementById("payloadInput").value;
-                // var payload;
-                if (!taskId && command !== 'resume_all') { // Allow resume_all without task ID
+                if (!taskId && command !== 'resume_all') {
                      alert("Task ID is required for skip/resume specific task");
                      return;
                 }
-                // try { payload = JSON.parse(payloadStr); } catch (e) { alert("Invalid JSON payload"); return; }
-
-                var commandMsg = { command: command, task_id: taskId, payload: {} }; // Payload not used currently
+                var commandMsg = { command: command, task_id: taskId, payload: {} };
                 console.log("Sending command:", commandMsg);
                 ws.send(JSON.stringify(commandMsg));
                 if(event) event.preventDefault();
             }
 
             async function startResearch(event) {
+                // ... (keep startResearch function exactly as it was) ...
                 event.preventDefault();
                 var topic = document.getElementById('topicInput').value;
                 if (!topic) { alert("Please enter a research topic."); return; }
-
                 try {
                     const response = await fetch('/start_research', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json', },
                         body: JSON.stringify({ topic: topic })
                     });
                     const result = await response.json();
                     if (response.ok) {
                         console.log("Research started:", result);
-                        // Optionally display job ID
-                         var li = document.createElement('li');
-                         li.textContent = `Research job ${result.job_id} initiated for topic: ${topic}`;
-                         li.style.color = "blue";
-                         messages.insertBefore(li, messages.firstChild);
+                        addMessage(`Research job ${result.job_id} initiated for topic: ${topic}`, "info");
                     } else {
+                        addMessage(`Error starting research: ${result.detail || 'Unknown error'}`, "error");
                         alert(`Error starting research: ${result.detail || 'Unknown error'}`);
                     }
                 } catch (error) {
                     console.error("Failed to send start research request:", error);
+                    addMessage("Failed to send start research request.", "error");
                     alert("Failed to send start research request.");
                 }
             }
