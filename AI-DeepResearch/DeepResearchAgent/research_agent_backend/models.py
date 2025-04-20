@@ -31,3 +31,14 @@ class UserCommand(BaseModel):
 
 class InitialTopic(BaseModel):
     topic: str
+
+# ... (keep existing imports and models)
+
+class JobResultsSummary(BaseModel):
+    type: str = "job_results_summary" # Message type identifier
+    job_id: str
+    unique_sources_found: int
+    duplicates_removed: int
+    sources_analyzed_count: int
+    # Optionally include a few example URLs/titles
+    top_sources: List[Dict[str, str]] = [] # e.g., [{"title": "...", "url": "..."}, ...]
