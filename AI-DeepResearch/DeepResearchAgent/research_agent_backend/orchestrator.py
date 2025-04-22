@@ -1,17 +1,20 @@
+import os
 import asyncio
 import logging
 from typing import Dict, Optional, List, Any
 from enum import Enum
 
-from models import Task, TaskStatus , JobResultsSummary
+from models import Task, TaskStatus , JobResultsSummary , FinalReportMessage
 from task_manager import TaskManager # Assuming TaskManager handles status updates/broadcasts
 from agents.planning import planning_agent # Import agent instances
 from agents.search import SearchAgent
 from agents.filtering import FilteringAgent
-# Import other agents later (Analysis, Reporting)
+from agents.analysis import AnalysisAgent
+
+from llm_providers import get_provider, BaseLLMProvider
 
 logger = logging.getLogger(__name__)
-
+OUTPUT_DIR = "D:\\Projects\\AI-Agents\\AI-DeepResearch\\DeepResearchAgent\\research_agent_backend\\LLM_outputs\\" 
 SEARCH_TASK_DELAY = 1.5
 
 class JobStatus(str, Enum): # This Enum is heart of managing all the jobs and their states
@@ -28,11 +31,27 @@ class Orchestrator:
         self.active_jobs: Dict[str, JobStatus] = {}
         self.pause_events: Dict[str, asyncio.Event] = {}
         self.job_tasks: Dict[str, asyncio.Task] = {} # To manage background tasks -> start with researching about task (that is the first task)
+
+        try:
+             # Assuming GOOGLE_API_KEY is set in .env
+             self.llm_provider: BaseLLMProvider = get_provider(provider_name="gemini")
+             logger.info(f"Initialized LLM Provider: {self.llm_provider.__class__.__name__} with model {self.llm_provider.get_model_name()}")
+        except Exception as e:
+             logger.error("Failed to initialize LLM Provider. Analysis Agent will fail.")
+             # Handle this more gracefully - maybe prevent job start?
+             self.llm_provider = None # Ensure it's None if init fails
+
         self.search_agent = SearchAgent(task_manager=self.task_manager)
         self.filtering_agent = FilteringAgent(task_manager=self.task_manager) 
+        if self.llm_provider:
+             self.analysis_agent = AnalysisAgent(llm_provider=self.llm_provider, task_manager=self.task_manager)
+        else:
+             self.analysis_agent = None # Analysis won't work
+        
 
     async def start_job(self, initial_task_id: str, topic: str):
         """Initiates and runs the research flow for a given job"""
+        
         if initial_task_id in self.active_jobs:
             logger.warning(f"Job {initial_task_id} is already active.")
             return
@@ -97,8 +116,24 @@ class Orchestrator:
                             TaskStatus.COMPLETED,
                             detail="Task completed successfully." # Correct: No result= argument
                         )
+                        # --- START: Check if it was the Analysis/Report task ---
+                        desc_lower = next_task.description.lower()
+                        if "analyze" in desc_lower or "synthesize" in desc_lower or "generate report" in desc_lower:
+                            logger.info(f"Task {next_task.id} (Analysis/Report) completed. Attempting to save and broadcast report.")
+                            analysis_result = self.task_manager.get_result(next_task.id)
+                            if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
+                                report_markdown = analysis_result["report"]
+                                if isinstance(report_markdown, str) and report_markdown.strip():
+                                    await self._save_report_to_file(job_id, report_markdown)
+                                    await self._broadcast_final_report(job_id, report_markdown)
+                                else:
+                                    logger.warning(f"Report found for task {next_task.id}, but it's empty or not a string.")
+                            else:
+                                logger.warning(f"Analysis/Report task {next_task.id} completed, but no valid 'report' key found in its result.")
+                        # --- END: Check if it was the Analysis/Report task ---
                     elif current_task:
-                        logger.debug(f"Task {next_task.id} already handled (Status: {current_task.status}). Not marking as completed again.")
+                        #change below log to debug/info based on number of times this is observed, can be ignored 
+                        logger.warning(f"Task {next_task.id} already handled (Status: {current_task.status}). Not marking as completed again.")
                     else:
                         logger.warning(f"Task {next_task.id} not found after dispatch. Cannot update status.")
 
@@ -144,10 +179,13 @@ class Orchestrator:
         task_completed_successfully = False # Flag to track if agent ran without error
 
         try:
+            #loophole in below conditions - if the task has name "Search" then it will never enter filter and same when plan research is there it will never enter other else conditoins
+            #TODO - fix this loophole
             if "plan research" in desc_lower:
+                #TODO: next iteration try to seperate out planning from this tasks as it should ideally be once or at max 3 times in a job
                 topic = task.description.split(":")[-1].strip()
                 sub_task_descriptions = await planning_agent.run(topic=topic, job_id=task.job_id)
-                await self._handle_planning_completion(task, sub_task_descriptions)
+                await self._handle_planning_completion(task, sub_task_descriptions) #only to add anaalyse and generate report tasks
                 await self.task_manager.store_result(task.id, sub_task_descriptions)
                 task_completed_successfully = True
 
@@ -175,6 +213,7 @@ class Orchestrator:
                 # Check if filter completed and get its result
                 filter_result = self.task_manager.get_result(task.id)
                 if filter_result and isinstance(filter_result, dict):
+                    #TODO: advanced version is mimking how grok/perplexity display top ranking one directly in UI , To make response more effective here, need to figure out ranking pages effectively ( may be another async coroutine that will rank as and when a page lands in graph)
                     filtered_items = filter_result.get("filtered_results", [])
                     summary = JobResultsSummary(
                         job_id=task.job_id,
@@ -196,17 +235,51 @@ class Orchestrator:
                 # --- END: Add Summary Broadcast ---
 
             elif "analyze" in desc_lower or "synthesize" in desc_lower:
-                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis/Synthesis (Not Implemented Yet)")
-                await asyncio.sleep(1)
-                await self.task_manager.store_result(task.id, {"analysis": "Analysis completed (simulated)."})
-                task_completed_successfully = True
+                if not self.analysis_agent:
+                     logger.error(f"[Job {task.job_id} | Task {task.id}] Analysis Agent not initialized (LLM provider failed?). Skipping task.")
+                     await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Analysis Agent unavailable.")
+                     task_completed_successfully = False # Explicitly skipped
+                else:
+                     # Find the preceding filter task for this job
+                     filter_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Filter:")
+                     if not filter_tasks:
+                          logger.error(f"[Job {task.job_id} | Task {task.id}] Cannot run Analysis: No preceding completed Filter task found.")
+                          await self.task_manager.update_task_status(task.id, TaskStatus.ERROR, error_message="Preceding Filter task not found or not completed.", detail="Failed: Missing input from Filter task.")
+                          task_completed_successfully = False # Error state
+                     else:
+                          # Assuming the latest filter task is the relevant one
+                          filter_task_id = filter_tasks[-1].id
+                          topic = self.task_manager.get_task(task.job_id).description.split(":")[-1].strip() # Get topic from initial planning task
+                          logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis Agent using results from Filter Task {filter_task_id}")
+
+                          await self.analysis_agent.run(
+                              topic=topic,
+                              filter_task_id=filter_task_id,
+                              current_task_id=task.id,
+                              job_id=task.job_id
+                          )
+                          task_completed_successfully = True
+                          # Result stored by analysis_agent internally
 
             elif "generate report" in desc_lower:
-                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Report Generation (Not Implemented Yet)")
-                await asyncio.sleep(1)
-                await self.task_manager.store_result(task.id, {"report_summary": "Report generated (simulated)."})
-                task_completed_successfully = True
-
+                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Report Generation (Not Implemented Yet - Analysis agent produces the report)")
+                # Check if analysis task completed and get its result
+                analysis_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Analyze")
+                if analysis_tasks:
+                     analysis_result = self.task_manager.get_result(analysis_tasks[-1].id)
+                     if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
+                          logger.info(f"[Job {task.job_id} | Task {task.id}] Found report generated by Analysis task.")
+                          # Store the same report under the report task ID for clarity/provenance
+                          await self.task_manager.store_result(task.id, analysis_result)
+                          task_completed_successfully = True
+                     else:
+                          logger.warning(f"[Job {task.job_id} | Task {task.id}] Analysis task completed but no report found in its result.")
+                          await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Input report from Analysis task missing.")
+                          task_completed_successfully = False
+                else:
+                     logger.warning(f"[Job {task.job_id} | Task {task.id}] Cannot generate report: Preceding Analysis task not found or not completed.")
+                     await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Preceding Analysis task missing.")
+                     task_completed_successfully = False
             else:
                 logger.warning(f"No specific agent logic found for task: '{task.description}'. Marking as skipped.")
                 await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="No agent handler found for this task type.")
@@ -266,6 +339,7 @@ class Orchestrator:
 
         # Check existing tasks to avoid adding duplicates if run multiple times
         existing_tasks = self.task_manager.get_all_tasks()
+        #TODO: Loophole here as well since we directly check strings in description which may not be always accurate and we might miss analysing for few edge cases, rethink on strategy
         analysis_exists = any(("analyze" in t.description.lower() or "synthesize" in t.description.lower()) and t.job_id == planning_task.job_id for t in existing_tasks)
         report_exists = any(("generate report" in t.description.lower()) and t.job_id == planning_task.job_id for t in existing_tasks)
 
@@ -316,3 +390,29 @@ class Orchestrator:
         logger.info(f"Broadcasting results summary for Job {summary.job_id}: Found {summary.unique_sources_found} sources.")
         # Use TaskManager's connection_manager instance
         await self.task_manager.connection_manager.broadcast_json(summary.dict())
+
+    async def _save_report_to_file(self, job_id: str, report_markdown: str):
+        """Saves the final report markdown to a file."""
+        try:
+            # Create output directory if it doesn't exist
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+            # Sanitize job_id for filename (optional, depends on job_id format)
+            safe_job_id = job_id.replace(":", "_").replace("/", "_").replace("\\", "_")
+            filename = os.path.join(OUTPUT_DIR, f"{safe_job_id}_report.md")
+
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(report_markdown)
+            logger.info(f"Successfully saved report for job {job_id} to {filename}")
+
+        except IOError as e:
+            logger.error(f"Failed to save report file for job {job_id}: {e}")
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred while saving report for job {job_id}: {e}")
+
+    async def _broadcast_final_report(self, job_id: str, report_markdown: str):
+        """Broadcasts the final report via WebSocket."""
+        logger.info(f"Broadcasting final report for job {job_id} via WebSocket.")
+        message = FinalReportMessage(job_id=job_id, report_markdown=report_markdown)
+        # Use TaskManager's connection_manager instance
+        await self.task_manager.connection_manager.broadcast_json(message.dict())
