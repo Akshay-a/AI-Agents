@@ -111,27 +111,18 @@ class Orchestrator:
                     # If it wasn't marked as skipped during dispatch, mark it completed.
                     current_task = self.task_manager.get_task(next_task.id)
                     if current_task and current_task.status not in [TaskStatus.SKIPPED, TaskStatus.ERROR, TaskStatus.COMPLETED]:
+                        #TODO: will not enter here, because disoatch method itself handles this logic
                         await self.task_manager.update_task_status(
                             next_task.id,
                             TaskStatus.COMPLETED,
                             detail="Task completed successfully." # Correct: No result= argument
                         )
                         # --- START: Check if it was the Analysis/Report task ---
-                        desc_lower = next_task.description.lower()
-                        if "analyze" in desc_lower or "synthesize" in desc_lower or "generate report" in desc_lower:
-                            logger.info(f"Task {next_task.id} (Analysis/Report) completed. Attempting to save and broadcast report.")
-                            analysis_result = self.task_manager.get_result(next_task.id)
-                            if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
-                                report_markdown = analysis_result["report"]
-                                if isinstance(report_markdown, str) and report_markdown.strip():
-                                    await self._save_report_to_file(job_id, report_markdown)
-                                    await self._broadcast_final_report(job_id, report_markdown)
-                                else:
-                                    logger.warning(f"Report found for task {next_task.id}, but it's empty or not a string.")
-                            else:
-                                logger.warning(f"Analysis/Report task {next_task.id} completed, but no valid 'report' key found in its result.")
+                        await self._handle_report_completion(next_task)
                         # --- END: Check if it was the Analysis/Report task ---
                     elif current_task:
+                        #TODO: rewrote this here to get the response at the moment, this entire piece of logic needs to be rethought
+                        await self._handle_report_completion(next_task)
                         #change below log to debug/info based on number of times this is observed, can be ignored 
                         logger.warning(f"Task {next_task.id} already handled (Status: {current_task.status}). Not marking as completed again.")
                     else:
@@ -177,7 +168,7 @@ class Orchestrator:
         logger.info(f"Dispatching task: {task.description} (ID: {task.id}) for Job {task.job_id}")
         desc_lower = task.description.lower()
         task_completed_successfully = False # Flag to track if agent ran without error
-
+        logger.info(f"*******Task description lowercased: {desc_lower}")
         try:
             #loophole in below conditions - if the task has name "Search" then it will never enter filter and same when plan research is there it will never enter other else conditoins
             #TODO - fix this loophole
@@ -235,6 +226,7 @@ class Orchestrator:
                 # --- END: Add Summary Broadcast ---
 
             elif "analyze" in desc_lower or "synthesize" in desc_lower:
+                logger.info(f"*************Running Analysis Agent******************")
                 if not self.analysis_agent:
                      logger.error(f"[Job {task.job_id} | Task {task.id}] Analysis Agent not initialized (LLM provider failed?). Skipping task.")
                      await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Analysis Agent unavailable.")
@@ -242,6 +234,7 @@ class Orchestrator:
                 else:
                      # Find the preceding filter task for this job
                      filter_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Filter:")
+                     logger.info(f"****************Found {len(filter_tasks)} completed Filter tasks for this job.")
                      if not filter_tasks:
                           logger.error(f"[Job {task.job_id} | Task {task.id}] Cannot run Analysis: No preceding completed Filter task found.")
                           await self.task_manager.update_task_status(task.id, TaskStatus.ERROR, error_message="Preceding Filter task not found or not completed.", detail="Failed: Missing input from Filter task.")
@@ -249,6 +242,7 @@ class Orchestrator:
                      else:
                           # Assuming the latest filter task is the relevant one
                           filter_task_id = filter_tasks[-1].id
+                          #TODO: enhance below topic extraction, this might miss users actual question
                           topic = self.task_manager.get_task(task.job_id).description.split(":")[-1].strip() # Get topic from initial planning task
                           logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis Agent using results from Filter Task {filter_task_id}")
 
@@ -416,3 +410,32 @@ class Orchestrator:
         message = FinalReportMessage(job_id=job_id, report_markdown=report_markdown)
         # Use TaskManager's connection_manager instance
         await self.task_manager.connection_manager.broadcast_json(message.dict())
+
+    async def _handle_report_completion(self, task: Task):
+        """
+        Checks if a completed task is the final report/analysis task,
+        and if so, retrieves, saves, and broadcasts the report.
+        """
+        desc_lower = task.description.lower()
+        job_id = task.job_id # Get job_id from the task object
+
+        # Check if this task type is expected to produce the final report
+        if "analyze" in desc_lower or "synthesize" in desc_lower or "generate report" in desc_lower:
+            logger.info(f"[Job {job_id}] Task {task.id} ({task.description}) completed. Checking for final report...")
+
+            analysis_result = self.task_manager.get_result(task.id)
+            logger.debug(f"[Job {job_id}] Result retrieved for task {task.id}: {analysis_result is not None}") # Log if result exists
+
+            if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
+                report_markdown = analysis_result["report"]
+                if isinstance(report_markdown, str) and report_markdown.strip():
+                    logger.info(f"[Job {job_id}] Valid report found for task {task.id}. Saving and broadcasting.")
+                    # Perform saving and broadcasting
+                    await self._save_report_to_file(job_id, report_markdown)
+                    await self._broadcast_final_report(job_id, report_markdown)
+                else:
+                    logger.warning(f"[Job {job_id}] Report found for task {task.id}, but it's empty or not a string.")
+            else:
+                logger.warning(f"[Job {job_id}] Analysis/Report task {task.id} completed, but no valid 'report' key found in its result.")
+        # else:
+            # logger.debug(f"Task {task.id} ({task.description}) is not a report-generating task. Skipping report handling.")
