@@ -42,3 +42,8 @@ class JobResultsSummary(BaseModel):
     sources_analyzed_count: int
     # Optionally include a few example URLs/titles
     top_sources: List[Dict[str, str]] = [] # e.g., [{"title": "...", "url": "..."}, ...]
+
+class FinalReportMessage(BaseModel):
+    type: str = "final_report" # Message type identifier
+    job_id: str
+    report_markdown: str
