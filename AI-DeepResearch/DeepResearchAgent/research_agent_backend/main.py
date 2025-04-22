@@ -282,7 +282,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 async def start_research(payload: InitialTopic, request: Request):
     logger.info(f"Received research request for topic: {payload.topic}")
     try:
-        # Create initial planning task
+        # Create initial planning task ( first task in the chain)
         plan_task = await task_manager.add_task(f"Plan research for: {payload.topic}", job_id=None)
         plan_task.job_id = plan_task.id # Assign task's own ID as Job ID
         task_manager.tasks[plan_task.id] = plan_task
