@@ -3,6 +3,14 @@ from enum import Enum
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 
+class TaskType(str, Enum):
+    PLAN = "PLAN" # Represents the initial planning task itself
+    REASON = "REASON"
+    SEARCH = "SEARCH"
+    FILTER = "FILTER"
+    SYNTHESIZE = "SYNTHESIZE"
+    REPORT = "REPORT"
+
 class TaskStatus(str, Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
@@ -12,13 +20,16 @@ class TaskStatus(str, Enum):
 
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    job_id: Optional[str] = None # Link task to an overall research job
-    description: str
+    job_id: Optional[str] = None # ID of the overall research job (often the ID of the initial PLAN task)
+    description: str # High-level human-readable description
+    task_type: TaskType # Explicit type of the task
+    parameters: Optional[Dict[str, Any]] = Field(default_factory=dict) # Parameters needed by the agent
+    # --- Status Fields ---
     status: TaskStatus = TaskStatus.PENDING
-    result: Optional[Any] = None
+    result: Optional[Any] = None # Stored separately by TaskManager now
     error_message: Optional[str] = None
-    # Could add parent_task_id, sub_tasks list later
 
+    
 class StatusUpdate(BaseModel):
     task_id: str
     status: TaskStatus
@@ -32,7 +43,12 @@ class UserCommand(BaseModel):
 class InitialTopic(BaseModel):
     topic: str
 
-# ... (keep existing imports and models)
+class JobStatus(str, Enum):
+    IDLE = "IDLE"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 class JobResultsSummary(BaseModel):
     type: str = "job_results_summary" # Message type identifier
@@ -47,3 +63,4 @@ class FinalReportMessage(BaseModel):
     type: str = "final_report" # Message type identifier
     job_id: str
     report_markdown: str
+
