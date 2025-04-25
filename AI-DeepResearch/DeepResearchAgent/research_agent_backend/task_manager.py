@@ -1,7 +1,6 @@
-
 import logging
 from typing import Dict, Optional, List, Any
-from models import Task, TaskStatus, StatusUpdate, UserCommand
+from models import Task, TaskStatus, StatusUpdate, UserCommand ,TaskType
 from persistence import save_tasks_to_md
 from websocket_manager import ConnectionManager
 
@@ -25,7 +24,37 @@ class TaskManager:
         else:
             logger.warning("Orchestrator reference already set.")
 
-    async def add_task(self, description: str, job_id: Optional[str] = None) -> Task:
+    async def add_task(
+        self,
+        description: str,
+        task_type: TaskType,
+        parameters: Optional[Dict[str, Any]] = None,
+        job_id: Optional[str] = None
+    ) -> Task:
+        """Adds a new task ."""
+        new_task = Task(
+            description=description,
+            task_type=task_type,
+            parameters=parameters if parameters is not None else {}, # Ensure parameters is a dict
+            job_id=job_id
+        )
+        self.tasks[new_task.id] = new_task
+        logger.info(f"[Job {job_id}] Added Task (ID: {new_task.id}): Type={task_type.value}, Desc='{description}'")
+        save_tasks_to_md(self.tasks) # have to make this async if file I/O becomes slow
+
+        update_message = StatusUpdate(
+            task_id=new_task.id,
+            status=new_task.status,
+            detail=f"Task '{new_task.description}' ({task_type.value}) created for job {job_id}.",
+            job_id=job_id
+        ).dict()
+        # Ensure job_id is in the broadcast message (redundant with model but safe)
+        update_message['job_id'] = job_id
+        await self.connection_manager.broadcast_json(update_message)
+        return new_task
+
+
+    async def add_task_old(self, description: str, job_id: Optional[str] = None) -> Task:
         new_task = Task(description=description, job_id=job_id)
         self.tasks[new_task.id] = new_task
         logger.info(f"[Job {job_id}] Added task: {new_task.description} (ID: {new_task.id})")
@@ -46,7 +75,6 @@ class TaskManager:
         status: TaskStatus,
         detail: Optional[str] = None,
         error_message: Optional[str] = None,
-        # Remove result from here, it's handled by store_result
     ):
         task = self.tasks.get(task_id)
         if not task:
@@ -55,18 +83,19 @@ class TaskManager:
 
         task.status = status
         task.error_message = error_message if status == TaskStatus.ERROR else None
-        # task.result is no longer directly set here
 
         logger.info(f"[Job {task.job_id}] Updating task {task_id} ({task.description}) to {status}. Detail: {detail}")
-        save_tasks_to_md(self.tasks) # Consider making async
+        save_tasks_to_md(self.tasks)
 
         update_message = StatusUpdate(
             task_id=task_id,
             status=task.status,
-            detail=detail or f"Task status changed to {status}"
+            detail=detail or f"Task status changed to {status}",
+            job_id=task.job_id # Include job_id
         ).dict()
-        update_message['job_id'] = task.job_id
+        update_message['job_id'] = task.job_id # Ensure again
         await self.connection_manager.broadcast_json(update_message)
+
 
 
     # --- Result Storage Methods ---
@@ -114,54 +143,73 @@ class TaskManager:
                  return True
         return False
 
-    def get_completed_tasks_for_job(self, job_id: str, description_contains: Optional[str] = None) -> List[Task]:
-        """Gets completed tasks for a job, optionally filtering by description."""
+    def get_completed_tasks_for_job(self, job_id: str, task_type: Optional[TaskType] = None) -> List[Task]:
+        """Gets completed tasks for a job, optionally filtering by type."""
         completed = []
         for task in self.tasks.values():
             if task.job_id == job_id and task.status == TaskStatus.COMPLETED:
-                if description_contains is None or description_contains.lower() in task.description.lower():
+                if task_type is None or task.task_type == task_type:
+                    logger.info(f"Found completed task {task.id} with type {task.task_type} for job {job_id}")
                     completed.append(task)
         return completed
+        
+    def get_completed_task_results_for_job(self, job_id: str, task_type: Optional[TaskType] = None) -> List[Any]:
+        """Gets results of completed tasks for a job, optionally filtering by type."""
+        results = []
+        for task in self.tasks.values():
+            if task.job_id == job_id and task.status == TaskStatus.COMPLETED:
+                if task_type is None or task.task_type == task_type:
+                    if task.id in self.task_results:
+                        logger.info(f"Task {task.id} has task type {task.task_type} and status {task.status} and result is available")
+                        results.append(self.task_results[task.id])
+                    else:
+                        logger.warning(f"Task {task.id} is completed but has no stored result")
+        return results
 
     async def handle_user_command(self, command_data: dict):
+        """Handles commands like skip/resume, now potentially job-level."""
         try:
+            # Use Pydantic validation
             command = UserCommand(**command_data)
-            logger.info(f"Processing command: {command.command} for task {command.task_id}")
-
-            task = self.get_task(command.task_id)
-            if not task or not task.job_id:
-                 logger.warning(f"Received command for task {command.task_id} which doesn't exist or has no job ID.")
-                 await self.connection_manager.broadcast_json({"error": f"Task {command.task_id} not found or missing job ID.", "command": command.command}) # Feedback
-                 return
+            logger.info(f"Processing command: {command.command} (TaskID: {command.task_id}, JobID: {command.job_id})")
 
             if not self.orchestrator:
-                 logger.error("Orchestrator reference not set in TaskManager. Cannot handle commands properly.")
-                 await self.connection_manager.broadcast_json({"error": "Internal server error: Orchestrator not available.", "command": command.command})
+                 logger.error("Orchestrator reference not set in TaskManager. Cannot handle commands.")
+                 # Maybe send feedback to user via websocket?
                  return
 
-            job_id = task.job_id
+            # Determine target job ID
+            target_job_id = command.job_id
+            if not target_job_id and command.task_id:
+                 task = self.get_task(command.task_id)
+                 if task:
+                     target_job_id = task.job_id
 
-            if command.command == "skip":
-                 if task.status in [TaskStatus.ERROR, TaskStatus.PENDING, TaskStatus.RUNNING]:
-                     await self.orchestrator.skip_task_and_resume(job_id, command.task_id)
+            if not target_job_id:
+                 logger.warning(f"Received command '{command.command}' without sufficient context (JobID or valid TaskID).")
+                 # Send feedback?
+                 return
+
+            # Route command to orchestrator based on target job
+            if command.command == "skip" and command.task_id:
+                 task_to_skip = self.get_task(command.task_id)
+                 if task_to_skip and task_to_skip.job_id == target_job_id:
+                     if task_to_skip.status in [TaskStatus.ERROR, TaskStatus.PENDING, TaskStatus.RUNNING]:
+                         await self.orchestrator.skip_task_and_resume(target_job_id, command.task_id)
+                     else:
+                         logger.warning(f"Cannot skip task {command.task_id} in status {task_to_skip.status}")
+                         # Send feedback?
                  else:
-                     logger.warning(f"Cannot skip task {command.task_id} in status {task.status}")
-                     await self.connection_manager.broadcast_json({"warning": f"Cannot skip task {task.id}, status is {task.status}", "task_id": task.id})
+                      logger.warning(f"Skip command received for task {command.task_id}, but it doesn't exist or belong to inferred job {target_job_id}.")
 
             elif command.command == "resume":
-                 # Resume command should ideally target the *job*, not just a task within it.
-                 # We use the task_id here to find the job_id, then resume the job.
-                 await self.orchestrator.resume(job_id)
+                 # Resume applies at the job level
+                 await self.orchestrator.resume(target_job_id)
 
-            # Add more command handling (e.g., provide_input) later
             else:
                 logger.warning(f"Unknown command received: {command.command}")
-                await self.connection_manager.broadcast_json({"warning": f"Unknown command: {command.command}", "task_id": command.task_id})
+                # Send feedback?
 
         except Exception as e:
             logger.error(f"Error processing user command {command_data}: {e}", exc_info=True)
-            # Send error feedback to user
-            try:
-                await self.connection_manager.broadcast_json({"error": f"Error processing command: {e}"})
-            except Exception as ws_err:
-                 logger.error(f"Failed to send error feedback via WebSocket: {ws_err}")
+            # Send error feedback to user?
