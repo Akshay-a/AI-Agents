@@ -1,11 +1,11 @@
 import os
 import asyncio
 import logging
-from typing import Dict, Optional, List, Any, Callable ,Awaitable
+from typing import Dict, Optional, List, Any, Callable ,Awaitable, Tuple
 from enum import Enum
 import uuid
 import json
-from models import Task, TaskStatus , JobResultsSummary , FinalReportMessage, TaskType
+from models import Task, TaskStatus , JobResultsSummary , FinalReportMessage, TaskType, TaskSuccessMessage, JobFailedMessage
 from task_manager import TaskManager # Assuming TaskManager handles status updates/broadcasts
 from agents.planning import PlanningAgent # Import agent instances
 from agents.search import SearchAgent
@@ -126,7 +126,7 @@ class Orchestrator:
             if job_id and initial_task_id: # Check if job was successfully created
                  if job_id in self.active_jobs:   
                      logger.warning(f"Job {job_id} is already active (potential race condition?).")
-                     return job_id # Return existing job ID
+                     return job_id, planned_tasks_data # Return existing job ID and plan data
 
                  logger.info(f"Starting background execution for job {job_id}...")
                  self.active_jobs[job_id] = JobStatus.RUNNING
@@ -137,8 +137,8 @@ class Orchestrator:
                      name=f"Job-{job_id}"
                  )
                  self.job_tasks[job_id] = job_task
-                 await self.broadcast_job_status(job_id, JobStatus.RUNNING, f"Job started for query: {user_query[:50]}...")
-                 return job_id # Return the actual job ID
+                 await self.broadcast_job_status(job_id, JobStatus.RUNNING, f"Starting research on: {user_query[:50]}...")
+                 return job_id, planned_tasks_data # Return the job ID and plan data
             else:
                  logger.error("Failed to create initial task and establish Job ID.")
                  raise RuntimeError("Failed to initialize job tasks.")
@@ -179,21 +179,26 @@ class Orchestrator:
         Fetches pending tasks, dispatches them, handles state, errors, and completion.
         """
         job_final_status = JobStatus.FAILED # Default unless explicitly completed
+        final_report_content = None
+        
         try:
             logger.info(f"Job {job_id}: Workflow execution started.")
+            
+            # Track the current phase of research to broadcast appropriate high-level messages
+            current_phase = None
+            search_phase_started = False
+            filter_phase_started = False
+            analysis_phase_started = False
+            
             while self.active_jobs.get(job_id) == JobStatus.RUNNING:
                 # --- Pause Check ---
                 if self.pause_events[job_id].is_set():
                     logger.info(f"Job {job_id} is paused. Waiting for resume signal...")
-                    #await self.broadcast_job_status(job_id, JobStatus.PAUSED, "Paused due to error or input required. Waiting for user.")
                     # Wait until the event is cleared (by resume command)
-                    #await self.pause_events[job_id].wait()
-                    # Check if job status changed while paused (e.g., cancelled)
                     if self.active_jobs.get(job_id) != JobStatus.RUNNING:
                          logger.info(f"Job {job_id} resume detected, but status is now {self.active_jobs.get(job_id)}. Exiting loop.")
                          break
                     logger.info(f"Job {job_id} resumed.")
-                    #await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Job resumed by user.")
                     # Continue to next loop iteration after resume
                     continue
 
@@ -204,7 +209,7 @@ class Orchestrator:
                 if not next_task:
                     if self.task_manager.has_running_tasks(job_id):
                         # If no pending tasks but some are still running, wait
-                        logger.infi(f"Job {job_id}: No pending tasks, but waiting for {len([t for t in self.task_manager.tasks.values() if t.job_id == job_id and t.status == TaskStatus.RUNNING])} running tasks.")
+                        logger.info(f"Job {job_id}: No pending tasks, but waiting for {len([t for t in self.task_manager.tasks.values() if t.job_id == job_id and t.status == TaskStatus.RUNNING])} running tasks.")
                         await asyncio.sleep(1) # Wait a bit before checking again
                         continue
                     else:
@@ -213,20 +218,49 @@ class Orchestrator:
                         if not self.task_manager.has_errored_tasks(job_id):
                              logger.info(f"Job {job_id} completed successfully.")
                              job_final_status = JobStatus.COMPLETED
-                             await self.broadcast_job_status(job_id, JobStatus.COMPLETED, "All tasks completed successfully.")
+                             await self.broadcast_job_status(job_id, JobStatus.COMPLETED, "Research completed successfully!")
                         else:
                              logger.warning(f"Job {job_id} finished, but with errors or skipped tasks.")
-                             job_final_status = JobStatus.FAILED # Mark as failed if errors occurred
-                             await self.broadcast_job_status(job_id, JobStatus.FAILED, "Job finished, but some tasks failed or were skipped.")
+                             job_final_status = JobStatus.FAILED
+                             # Send a user-friendly failure message
+                             await self.task_manager.connection_manager.broadcast_json(
+                                 JobFailedMessage(
+                                     job_id=job_id
+                                 ).dict()
+                             )
+                             break # Exit without trying to generate a report
 
-                        # --- Final Report Saving/Broadcasting (Triggered on Completion/Failure) ---
-                        logger.info(f"Job {job_id} finished with status {job_final_status}. Checking for final report content...")
-                        await self._handle_final_report(job_id)
+                        # --- Final Report Generation (only if job was successful) ---
+                        if job_final_status == JobStatus.COMPLETED:
+                            logger.info(f"Job {job_id} finished successfully. Generating final report...")
+                            final_report_content = await self._handle_final_report(job_id)
+                            
+                            if not final_report_content:
+                                logger.warning(f"Job {job_id}: No valid report content found. Marking as failed.")
+                                job_final_status = JobStatus.FAILED
+                                await self.task_manager.connection_manager.broadcast_json(
+                                    JobFailedMessage(
+                                        job_id=job_id,
+                                        message="Failed to generate a report. Please try again or rephrase your query."
+                                    ).dict()
+                                )
                         break # Exit the while loop, job is done
+
+                # --- Broadcast Phase Updates ---
+                # Check if we're entering a new phase based on next task type
+                if next_task.task_type == TaskType.SEARCH and not search_phase_started:
+                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Researching sources...")
+                    search_phase_started = True
+                elif next_task.task_type == TaskType.FILTER and not filter_phase_started:
+                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Consolidating information...")
+                    filter_phase_started = True
+                elif (next_task.task_type == TaskType.SYNTHESIZE or next_task.task_type == TaskType.REASON) and not analysis_phase_started:
+                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Analyzing and synthesizing...")
+                    analysis_phase_started = True
 
                 # --- Execute the Next Task ---
                 await self.task_manager.update_task_status(next_task.id, TaskStatus.RUNNING, detail="Orchestrator picked up task.")
-                task_failed_in_dispatch = False
+                task_failed = False
                 try:
                     # Dispatch task to the appropriate agent via the dispatch map
                     await self._dispatch_task(next_task)
@@ -240,6 +274,15 @@ class Orchestrator:
                             TaskStatus.COMPLETED,
                             detail="Task completed successfully by agent."
                         )
+                        
+                        # Broadcast task success message (but not full task update)
+                        await self.task_manager.connection_manager.broadcast_json(
+                            TaskSuccessMessage(
+                                job_id=job_id,
+                                task_id=next_task.id,
+                                task_type=next_task.task_type
+                            ).dict()
+                        )
                     elif current_task_state:
                          logger.debug(f"Task {next_task.id} finished with status {current_task_state.status} (not RUNNING). Not marking completed by Orchestrator.")
                     else:
@@ -248,7 +291,7 @@ class Orchestrator:
 
                 except Exception as e:
                     # Handle errors *raised by the agent execution* (_dispatch_task re-raises them)
-                    task_failed_in_dispatch = True
+                    task_failed = True
                     logger.error(f"Error executing Task {next_task.id} (Type: {next_task.task_type.value}): {e}", exc_info=False) # Log simply here
                     error_msg = str(e)
                     # Ensure task exists before updating status to ERROR
@@ -262,23 +305,28 @@ class Orchestrator:
                     else:
                         logger.error(f"Task {next_task.id} not found, cannot mark as ERROR after execution failure.")
 
-                    # Pause the job because a task failed
-                    #self.pause_events[job_id].set() # Set the event to signal pause
-                    #await self.broadcast_job_status(job_id, JobStatus.PAUSED, f"Paused due to error in task {next_task.id}: {error_msg[:100]}...")
-                    # Loop will pause on the next iteration due to the pause_event being set
-
                 # --- Loop Delay ---
                 # Add a small delay unless a task just failed (to avoid immediate re-check after pause)
-                if not task_failed_in_dispatch:
+                if not task_failed:
                     await asyncio.sleep(0.1)
         except asyncio.CancelledError:
              logger.info(f"Job {job_id} task was cancelled.")
              job_final_status = JobStatus.FAILED
-             await self.broadcast_job_status(job_id, JobStatus.FAILED, "Job execution was cancelled.")
+             await self.task_manager.connection_manager.broadcast_json(
+                 JobFailedMessage(
+                     job_id=job_id,
+                     message="Research was cancelled before completion."
+                 ).dict()
+             )
         except Exception as e:
             logger.exception(f"Critical unexpected error in research flow for job {job_id}: {e}")
             job_final_status = JobStatus.FAILED
-            await self.broadcast_job_status(job_id, JobStatus.FAILED, f"Critical error occurred: {e}")
+            await self.task_manager.connection_manager.broadcast_json(
+                 JobFailedMessage(
+                     job_id=job_id,
+                     message="An unexpected error occurred. Please try again."
+                 ).dict()
+             )
         finally:
             # Final actions regardless of how the loop exited
             self.active_jobs[job_id] = job_final_status # Update final status
@@ -499,8 +547,12 @@ class Orchestrator:
 
     # --- Final Report Handling (Called at end of job) ---
     async def _handle_final_report(self, job_id: str):
-        """Finds the final report, saves it, and broadcasts it."""
-        logger.info(f"Job {job_id}: Checking for final report content...")
+        """
+        Finds the final report and returns it.
+        If found, saves and broadcasts the report.
+        Returns the report content on success, None on failure.
+        """
+        logger.info(f"Job {job_id}: Looking for final report content...")
         
         # First try to find completed REPORT tasks
         report_task = None
@@ -536,195 +588,13 @@ class Orchestrator:
                  logger.info(f"Found final report content in task {last_relevant_task.id} (Type: {last_relevant_task.task_type.value}). Saving and broadcasting.")
                  await self._save_report_to_file(job_id, report_markdown)
                  await self._broadcast_final_report(job_id, report_markdown)
+                 return report_markdown
              else:
                  logger.warning(f"Job {job_id} finished, but final report from task {last_relevant_task.id} was empty or invalid.")
+                 return None
         else:
              logger.warning(f"Job {job_id} finished, but no final REPORT, SYNTHESIZE, or REASON task found with results.")
-
-    
-    async def _dispatch_task_old_way(self, task: Task):
-        """Calls the appropriate agent based on task description. Agents now store their own results."""
-        logger.info(f"Dispatching task: {task.description} (ID: {task.id}) for Job {task.job_id}")
-        desc_lower = task.description.lower()
-        task_completed_successfully = False # Flag to track if agent ran without error
-        logger.info(f"*******Task description lowercased: {desc_lower}")
-        try:
-            #loophole in below conditions - if the task has name "Search" then it will never enter filter and same when plan research is there it will never enter other else conditoins
-            #TODO - fix this loophole
-            if "plan research" in desc_lower:
-                #TODO: next iteration try to seperate out planning from this tasks as it should ideally be once or at max 3 times in a job
-                topic = task.description.split(":")[-1].strip()
-                sub_task_descriptions = await self.planning_agent.run(topic=topic, job_id=task.job_id)
-                await self._handle_planning_completion(task, sub_task_descriptions) #only to add anaalyse and generate report tasks
-                await self.task_manager.store_result(task.id, sub_task_descriptions)
-                task_completed_successfully = True
-
-            elif "search:" in desc_lower:
-                await asyncio.sleep(SEARCH_TASK_DELAY)  # Simulate delay for search tasks
-                query = task.description.split(":")[-1].strip()
-                await self.search_agent.run(query=query, task_id=task.id, job_id=task.job_id)
-                task_completed_successfully = True
-                # Result stored by search_agent internally
-
-            elif "filter:" in desc_lower:
-                # Identify preceding search tasks for this job
-                search_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Search:")
-                search_task_ids = [st.id for st in search_tasks]
-
-                if not search_task_ids:
-                    logger.warning(f"[Job {task.job_id} | Task {task.id}] Filter task found no preceding completed Search tasks.")
-                    # Run filter even with empty list to potentially store an empty result
-                    await self.filtering_agent.run(search_task_ids=[], current_task_id=task.id, job_id=task.job_id)
-                else:
-                    logger.info(f"[Job {task.job_id} | Task {task.id}] Filter task will use results from search tasks: {search_task_ids}")
-                    await self.filtering_agent.run(search_task_ids=search_task_ids, current_task_id=task.id, job_id=task.job_id)
-
-                # --- START: Add Summary Broadcast ---
-                # Check if filter completed and get its result
-                filter_result = self.task_manager.get_result(task.id)
-                if filter_result and isinstance(filter_result, dict):
-                    #TODO: advanced version is mimking how grok/perplexity display top ranking one directly in UI , To make response more effective here, need to figure out ranking pages effectively ( may be another async coroutine that will rank as and when a page lands in graph)
-                    filtered_items = filter_result.get("filtered_results", [])
-                    summary = JobResultsSummary(
-                        job_id=task.job_id,
-                        unique_sources_found=len(filtered_items),
-                        duplicates_removed=filter_result.get("duplicates_removed", 0),
-                        sources_analyzed_count=filter_result.get("sources_analyzed_count", len(search_task_ids)),
-                        # Get top 5 URLs/titles (if available)
-                        top_sources=[
-                            {"title": item.get("title", "N/A"), "url": item.get("url", "N/A")}
-                            for item in filtered_items[:5] if isinstance(item, dict)
-                        ]
-                    )
-                    await self.broadcast_job_summary(summary)
-                    task_completed_successfully = True # Mark as successful if result was processed
-                else:
-                     logger.warning(f"[Job {task.job_id} | Task {task.id}] Filter task completed, but no valid result dictionary found in TaskManager.")
-                     # Still mark as successful if the agent didn't raise an error, even if result missing
-                     task_completed_successfully = True
-                # --- END: Add Summary Broadcast ---
-
-            elif "analyze" in desc_lower or "synthesize" in desc_lower:
-                logger.info(f"*************Running Analysis Agent******************")
-                if not self.analysis_agent:
-                     logger.error(f"[Job {task.job_id} | Task {task.id}] Analysis Agent not initialized (LLM provider failed?). Skipping task.")
-                     await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Analysis Agent unavailable.")
-                     task_completed_successfully = False # Explicitly skipped
-                else:
-                     # Find the preceding filter task for this job
-                     filter_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Filter:")
-                     logger.info(f"****************Found {len(filter_tasks)} completed Filter tasks for this job.")
-                     if not filter_tasks:
-                          logger.error(f"[Job {task.job_id} | Task {task.id}] Cannot run Analysis: No preceding completed Filter task found.")
-                          await self.task_manager.update_task_status(task.id, TaskStatus.ERROR, error_message="Preceding Filter task not found or not completed.", detail="Failed: Missing input from Filter task.")
-                          task_completed_successfully = False # Error state
-                     else:
-                          # Assuming the latest filter task is the relevant one
-                          filter_task_id = filter_tasks[-1].id
-                          #TODO: enhance below topic extraction, this might miss users actual question
-                          topic = self.task_manager.get_task(task.job_id).description.split(":")[-1].strip() # Get topic from initial planning task
-                          logger.info(f"[Job {task.job_id} | Task {task.id}] Running Analysis Agent using results from Filter Task {filter_task_id}")
-
-                          await self.analysis_agent.run(
-                              topic=topic,
-                              filter_task_id=filter_task_id,
-                              current_task_id=task.id,
-                              job_id=task.job_id
-                          )
-                          task_completed_successfully = True
-                          # Result stored by analysis_agent internally
-
-            elif "generate report" in desc_lower:
-                logger.info(f"[Job {task.job_id} | Task {task.id}] Running Report Generation (Not Implemented Yet - Analysis agent produces the report)")
-                # Check if analysis task completed and get its result
-                analysis_tasks = self.task_manager.get_completed_tasks_for_job(task.job_id, description_contains="Analyze")
-                if analysis_tasks:
-                     analysis_result = self.task_manager.get_result(analysis_tasks[-1].id)
-                     if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
-                          logger.info(f"[Job {task.job_id} | Task {task.id}] Found report generated by Analysis task.")
-                          # Store the same report under the report task ID for clarity/provenance
-                          await self.task_manager.store_result(task.id, analysis_result)
-                          task_completed_successfully = True
-                     else:
-                          logger.warning(f"[Job {task.job_id} | Task {task.id}] Analysis task completed but no report found in its result.")
-                          await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Input report from Analysis task missing.")
-                          task_completed_successfully = False
-                else:
-                     logger.warning(f"[Job {task.job_id} | Task {task.id}] Cannot generate report: Preceding Analysis task not found or not completed.")
-                     await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="Preceding Analysis task missing.")
-                     task_completed_successfully = False
-            else:
-                logger.warning(f"No specific agent logic found for task: '{task.description}'. Marking as skipped.")
-                await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail="No agent handler found for this task type.")
-                # Task was skipped, not successfully completed in the normal sense
-                task_completed_successfully = False # Explicitly false
-
-            # If the agent ran without raising an exception, mark task completed *if* it wasn't already skipped/errored
-            if task_completed_successfully:
-                current_task_state = self.task_manager.get_task(task.id)
-                if current_task_state and current_task_state.status == TaskStatus.RUNNING:
-                    await self.task_manager.update_task_status(
-                        task.id,
-                        TaskStatus.COMPLETED,
-                        detail="Task completed successfully by agent."
-                    )
-                elif current_task_state:
-                     logger.debug(f"Task {task.id} status is already {current_task_state.status}, not marking completed again.")
-                else:
-                     logger.warning(f"Task {task.id} not found after successful agent run. Cannot mark completed.")
-
-
-        except Exception as e:
-            # Handle errors raised *by the agent execution*
-            logger.error(f"Agent execution failed for task {task.id} ({task.description}): {e}", exc_info=True) # Log traceback here
-            error_msg = str(e)
-            # Ensure task exists before updating status to ERROR
-            if self.task_manager.get_task(task.id):
-                await self.task_manager.update_task_status(
-                    task.id,
-                    TaskStatus.ERROR,
-                    error_message=error_msg,
-                    detail=f"Agent failed: {error_msg[:100]}..."
-                )
-            else:
-                logger.error(f"Task {task.id} not found, cannot mark as ERROR after agent failure.")
-
-            # Pause the job - Moved this responsibility to the main loop (_run_research_flow)
-            # self.pause_events[task.job_id].set()
-            # await self.broadcast_job_status(task.job_id, JobStatus.PAUSED, f"Paused due to error in task {task.id}: {error_msg[:100]}...")
-
-            # Re-raise the exception so the main loop catches it and pauses
-            raise e
-    async def _handle_planning_completion(self, planning_task: Task, sub_task_descriptions: List[str]):
-        if not isinstance(sub_task_descriptions, list):
-             logger.warning(f"Planner for task {planning_task.id} did not return a list of descriptions. Got: {type(sub_task_descriptions)}")
-             # Store empty list as result to indicate failure/no output
-             await self.task_manager.store_result(planning_task.id, [])
-             return
-
-        logger.info(f"Planning task {planning_task.id} completed. Adding {len(sub_task_descriptions)} sub-tasks for job {planning_task.job_id}.")
-        for sub_task_desc in sub_task_descriptions:
-            await self.task_manager.add_task(description=sub_task_desc, job_id=planning_task.job_id)
-
-        # Add downstream tasks only if planning was successful
-        has_analysis = any("analyze" in d.lower() or "synthesize" in d.lower() for d in sub_task_descriptions)
-        has_report = any("generate report" in d.lower() for d in sub_task_descriptions)
-
-        # Check existing tasks to avoid adding duplicates if run multiple times
-        existing_tasks = self.task_manager.get_all_tasks()
-        #TODO: Loophole here as well since we directly check strings in description which may not be always accurate and we might miss analysing for few edge cases, rethink on strategy
-        analysis_exists = any(("analyze" in t.description.lower() or "synthesize" in t.description.lower()) and t.job_id == planning_task.job_id for t in existing_tasks)
-        report_exists = any(("generate report" in t.description.lower()) and t.job_id == planning_task.job_id for t in existing_tasks)
-
-        if not has_analysis and not analysis_exists:
-             await self.task_manager.add_task(description=f"Analyze & Synthesize findings for job {planning_task.job_id}", job_id=planning_task.job_id)
-        if not has_report and not report_exists:
-             await self.task_manager.add_task(description=f"Generate report for job {planning_task.job_id}", job_id=planning_task.job_id)
-
-        # Store the generated sub-task descriptions as the result of the planning task
-        # Moved this here from _dispatch_task to ensure it happens after adding tasks
-        # await self.task_manager.store_result(planning_task.id, sub_task_descriptions)
-        # Storing result is now done in _dispatch_task right after planning_agent.run
+             return None
 
     async def resume(self, job_id: str):
         """Resumes a paused job."""
