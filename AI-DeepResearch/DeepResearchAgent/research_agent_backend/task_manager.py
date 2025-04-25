@@ -42,15 +42,15 @@ class TaskManager:
         logger.info(f"[Job {job_id}] Added Task (ID: {new_task.id}): Type={task_type.value}, Desc='{description}'")
         save_tasks_to_md(self.tasks) # have to make this async if file I/O becomes slow
 
-        update_message = StatusUpdate(
-            task_id=new_task.id,
-            status=new_task.status,
-            detail=f"Task '{new_task.description}' ({task_type.value}) created for job {job_id}.",
-            job_id=job_id
-        ).dict()
-        # Ensure job_id is in the broadcast message (redundant with model but safe)
-        update_message['job_id'] = job_id
-        await self.connection_manager.broadcast_json(update_message)
+        #update_message = StatusUpdate(
+        #    task_id=new_task.id,
+        #    status=new_task.status,
+        #    detail=f"Task '{new_task.description}' ({task_type.value}) created for job {job_id}.",
+        #    job_id=job_id
+        #).dict()
+        ## Ensure job_id is in the broadcast message (redundant with model but safe)
+        #update_message['job_id'] = job_id
+        #await self.connection_manager.broadcast_json(update_message)
         return new_task
 
 
@@ -87,14 +87,14 @@ class TaskManager:
         logger.info(f"[Job {task.job_id}] Updating task {task_id} ({task.description}) to {status}. Detail: {detail}")
         save_tasks_to_md(self.tasks)
 
-        update_message = StatusUpdate(
-            task_id=task_id,
-            status=task.status,
-            detail=detail or f"Task status changed to {status}",
-            job_id=task.job_id # Include job_id
-        ).dict()
-        update_message['job_id'] = task.job_id # Ensure again
-        await self.connection_manager.broadcast_json(update_message)
+        ##update_message = StatusUpdate(
+        #    task_id=task_id,
+       ##     status=task.status,
+        #    detail=detail or f"Task status changed to {status}",
+        #    job_id=task.job_id # Include job_id
+       # ).dict()
+        #update_message['job_id'] = task.job_id # Ensure again
+        #await self.connection_manager.broadcast_json(update_message)
 
 
 
