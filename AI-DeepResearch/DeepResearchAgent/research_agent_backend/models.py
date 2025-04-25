@@ -64,3 +64,14 @@ class FinalReportMessage(BaseModel):
     job_id: str
     report_markdown: str
 
+class TaskSuccessMessage(BaseModel):
+    type: str = "task_success" # Message type identifier
+    job_id: str
+    task_id: str
+    task_type: TaskType
+
+class JobFailedMessage(BaseModel):
+    type: str = "job_failed" # Message type identifier
+    job_id: str
+    message: str = "Failed to complete research. Please try again or rephrase your query."
+
