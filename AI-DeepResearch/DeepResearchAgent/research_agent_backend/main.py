@@ -299,8 +299,22 @@ async def start_new_job(payload: Dict[str, str]): # Expect generic dict for quer
     logger.info(f"Received job request for query: {user_query}")
     try:
         # Call orchestrator to handle planning and job start
-        job_id = await orchestrator.start_job(user_query=user_query)
-        return {"message": "Research job initiated successfully.", "job_id": job_id}
+        job_id, planned_tasks = await orchestrator.start_job(user_query=user_query)
+        
+        # Format planned tasks for the frontend
+        formatted_plan = [
+            {
+                "task_type": task.get("task_type", "UNKNOWN"),
+                "description": task.get("description", "No description")
+            }
+            for task in planned_tasks
+        ]
+        
+        return {
+            "message": "Research job initiated successfully.",
+            "job_id": job_id,
+            "plan": formatted_plan
+        }
 
     except (ValueError, RuntimeError) as e: # Catch planning or validation errors
          logger.error(f"Failed to plan or start job for query '{user_query}': {e}", exc_info=True)
