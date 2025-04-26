@@ -1,5 +1,6 @@
 # AI - Deep Research Agent
 This Repo contains Agent which mimics LLM's Ability of Deep Research.
+Improved Version - https://github.com/Akshay-a/AI-Agents/tree/main/AI-DeepResearch/DeepResearchAgent/research_agent_backend
 
 When Provided with a Prompt below are the conceptual steps:
 
