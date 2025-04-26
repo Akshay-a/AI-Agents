@@ -20,7 +20,10 @@ bash
 Copy
 Edit
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+
 🧠 How It Works: The Agent Team Approach
+
 At its core, the system uses a multi-agent architecture orchestrated by a central controller.
 
 Planner Agent (The Strategist)
@@ -40,6 +43,7 @@ Filtering Agent: Cleans, deduplicates, and filters the search results to retain 
 Synthesizer/Analysis Agent: Combines the results into a clear, structured final report with sources linked at the bottom.
 
 Orchestration and Communication
+
 A central Orchestrator assigns tasks and manages workflow based on the Planner's output.
 
 A Task Manager tracks progress for each task.
@@ -47,6 +51,7 @@ A Task Manager tracks progress for each task.
 WebSockets are used to communicate real-time updates and deliver the final report to the user interface.
 
 📈 Current Status (MVP)
+
 The system dynamically plans and routes tasks through multiple agents.
 
 Able to handle different types of queries (research, reasoning) and produce structured reports.
@@ -58,6 +63,7 @@ Currently integrates with Google Gemini models.
 Future plans include integration with Llama 4 and DeepSeek R1 for enhanced reasoning on GPU.
 
 🔥 Upcoming Enhancements
+
 Building a React.js UI for better scalability and user experience.
 
 Introducing multi-hop reasoning for complex queries to maximize intelligence even from smaller models.
@@ -65,11 +71,13 @@ Introducing multi-hop reasoning for complex queries to maximize intelligence eve
 Saving user interactions to a database to offer a hyper-personalized discover feed based on past queries (similar to Perplexity’s Comet project).
 
 🌟 Vision
+
 The aim is to create a system that genuinely assists with research and knowledge discovery, moving beyond simple keyword matching toward synthesized understanding.
 
 This is an early-stage open source project, and contributions, feedback, and ideas are warmly welcomed.
 
 🛠️ Get Involved
+
 If this project sparks any ideas or improvements in your mind, feel free to reach out!
 Email me at aapsingi95@gmail.com
 Ping me on linkdelin- https://www.linkedin.com/in/a-akshay-kumar/
