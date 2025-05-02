@@ -1,0 +1,10 @@
+{
+    "dependencies": [
+      "./backend_agent" 
+    ],
+    "graphs": {
+      "customer_support_agent": "./backend_agent/agent.py:build_graph"
+    },
+    "env": {
+    }
+  }
