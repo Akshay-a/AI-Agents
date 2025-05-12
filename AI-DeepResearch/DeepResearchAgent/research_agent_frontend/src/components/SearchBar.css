@@ -1,0 +1,130 @@
+/* src/components/SearchBar.css */
+.search-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 5vh; /* Pushes it down a bit */
+    width: 100%;
+    max-width: 700px; /* Max width for the search bar area */
+    margin: 0 auto; /* Center it */
+  }
+  
+.perplexity-logo-main {
+font-size: 3.5em; /* Large logo */
+font-weight: 500; /* Medium weight */
+color: #333;
+margin-bottom: 30px;
+font-family: 'Arial', sans-serif; /* Or a specific font if you know it */
+}
+
+.search-bar {
+display: flex;
+align-items: center;
+width: 100%;
+background-color: #fff;
+border: 1px solid #dcdcdc;
+border-radius: 16px; /* More rounded like Perplexity */
+padding: 8px;
+box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.search-input-wrapper {
+display: flex;
+align-items: center;
+flex-grow: 1;
+position: relative; /* For absolute positioning of prefix icon */
+}
+
+.search-input-wrapper .search-icon-prefix {
+position: absolute;
+left: 15px;
+color: #888;
+font-size: 18px; /* Slightly larger icon */
+}
+
+.search-bar input {
+flex-grow: 1;
+border: none;
+outline: none;
+padding: 12px 15px 12px 45px; /* Left padding for icon */
+font-size: 16px;
+background-color: transparent;
+color: #333;
+}
+
+.search-bar input::placeholder {
+color: #aaa;
+}
+
+.search-actions {
+display: flex;
+align-items: center;
+margin-right: 8px; /* Space before the submit button */
+}
+
+.action-button {
+background: none;
+border: none;
+color: #777;
+padding: 8px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+transition: background-color 0.2s;
+}
+
+.action-button:hover {
+background-color: #f0f0f0;
+}
+
+.action-button svg {
+font-size: 18px;
+}
+
+.search-buttons {
+display: flex;
+align-items: center;
+}
+
+.search-submit-button {
+background-color: #2563eb;
+color: white;
+border: none;
+border-radius: 50%;
+width: 40px;
+height: 40px;
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.search-submit-button:hover {
+background-color: #1d4ed8;
+}
+
+.search-submit-button:disabled {
+background-color: #9ca3af;
+cursor: not-allowed;
+}
+
+.loading-spinner {
+width: 18px;
+height: 18px;
+border: 2px solid rgba(255, 255, 255, 0.3);
+border-radius: 50%;
+border-top-color: white;
+animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
+}
+
+.search-submit-button svg {
+font-size: 20px;
+}

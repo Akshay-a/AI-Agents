@@ -1,0 +1,179 @@
+/* src/components/Footer.css */
+
+/* Line 1: .footer { ... } */
+/* Explanation: Styles for the main `<footer>` container. */
+.footer {
+    /* Line 2: display: flex; */
+    /* Explanation: Makes the footer a flex container. Its direct children (`.footer-links` and `.footer-actions`) will be flex items. */
+    display: flex;
+  
+    /* Line 3: justify-content: space-between; */
+    /* Explanation: Distributes space between the flex items. `.footer-links` will be pushed to the left, and `.footer-actions` to the right, with maximum space between them. */
+    justify-content: space-between;
+  
+    /* Line 4: align-items: center; */
+    /* Explanation: Vertically aligns the flex items (the links group and the actions group) in the center of the footer. */
+    align-items: center;
+  
+    /* Line 5: padding: 12px 24px; */
+    /* Explanation: Internal spacing for the footer: 12px top/bottom, 24px left/right. */
+    padding: 12px 24px;
+  
+    /* Line 6: background-color: #f7f7f7; */
+    /* Explanation: Sets a light grey background color for the footer. This should ideally match or complement the sidebar background for visual consistency. Perplexity's footer is very light, almost white, or matches its sidebar. */
+    background-color: #f7f7f7; /* Or #fafafa, or #fff if page bg is off-white */
+  
+    /* Line 7: border-top: 1px solid #e0e0e0; */
+    /* Explanation: Adds a 1-pixel solid light grey line at the top of the footer, visually separating it from the content above. */
+    border-top: 1px solid #e0e0e0;
+  
+    /* Line 8: font-size: 13px; */
+    /* Explanation: Sets a base font size for text within the footer. Links and other text will inherit this unless overridden. */
+    font-size: 13px;
+  
+    /* Line 9: color: #555; */
+    /* Explanation: Sets a default dark grey text color for the footer. */
+    color: #555; /* Perplexity uses a color like #70757A or #5F6368 for footer text */
+  
+    /* The following properties ensure the footer behaves correctly within the .content-wrapper (from App.css)
+       if it's not fixed to the bottom of the viewport but rather at the bottom of the content flow.
+       `width: 100%` is important if the parent doesn't inherently make it full-width.
+       `box-sizing: border-box` ensures padding doesn't increase its allocated width.
+    */
+    width: 100%; /* Ensures it takes full width of its container within content-wrapper */
+    box-sizing: border-box;
+    /* Note: If you wanted a footer truly STICKY to the bottom of the viewport regardless of content height,
+       you'd use `position: fixed; bottom: 0; left: 0; right: 0;` (or `left: 260px` if accounting for a fixed sidebar)
+       and add padding to the bottom of the main content area to prevent overlap.
+       Our current setup in App.js makes it stick to the bottom of the viewport because .content-wrapper is 100vh
+       and .main-content grows to fill space.
+    */
+  }
+  
+  /* Line 10: .footer-links { ... } */
+  /* Explanation: Styles for the container of the footer navigation links. */
+  .footer-links {
+    /* Line 11: display: flex; */
+    /* Explanation: Makes this a flex container. The `<a>` tags inside will be flex items. */
+    display: flex;
+  
+    /* Line 12: gap: 16px; */
+    /* Explanation: Adds 16 pixels of space between each link. `gap` is a convenient way to space flex items. */
+    gap: 16px; /* Perplexity uses around 20-24px */
+  }
+  
+  /* Line 13: .footer-links a { ... } */
+  /* Explanation: Styles for the individual anchor (`<a>`) tags within the `.footer-links` container. */
+  .footer-links a {
+    /* Line 14: color: #555; */
+    /* Explanation: Sets the link color. It inherits the footer's default color but can be overridden. Perplexity: #5F6368 or #70757A. */
+    color: #5F6368;
+  
+    /* Line 15: text-decoration: none; */
+    /* Explanation: Removes the default underline from links. */
+    text-decoration: none;
+  
+    /* Line 16: font-weight: 500; */
+    /* Explanation: Sets a medium font weight. Perplexity footer links are normal weight (400). */
+    font-weight: 400; /* Or 500 if you prefer slightly bolder */
+  }
+  
+  /* Line 17: .footer-links a:hover { ... } */
+  /* Explanation: Styles for footer links when the mouse hovers over them. */
+  .footer-links a:hover {
+    /* Line 18: color: #000; */
+    /* Explanation: Changes the link color to black on hover for better feedback. Perplexity uses a slightly darker grey or black. */
+    color: #202123;
+  
+    /* Line 19: text-decoration: underline; */
+    /* Explanation: Adds an underline on hover, a common UX pattern for indicating clickability. */
+    text-decoration: underline;
+  }
+  
+  /* Line 20: .footer-actions { ... } */
+  /* Explanation: Styles for the container of the elements on the right side of the footer (language selector, help button). */
+  .footer-actions {
+    /* Line 21: display: flex; */
+    /* Explanation: Makes this a flex container. The `<select>` and `<button>` will be flex items. */
+    display: flex;
+  
+    /* Line 22: align-items: center; */
+    /* Explanation: Vertically aligns the language selector and help button in the center. */
+    align-items: center;
+  
+    /* Line 23: gap: 16px; */
+    /* Explanation: Adds 16 pixels of space between the language selector and the help button. Perplexity uses around 24px. */
+    gap: 20px;
+  }
+  
+  /* Line 24: .language-selector { ... } */
+  /* Explanation: Styles for the `<select>` dropdown element. */
+  .language-selector {
+    /* Line 25: padding: 6px 8px; */
+    /* Explanation: Internal spacing for the select box. */
+    padding: 6px 8px;
+  
+    /* Line 26: border: 1px solid #dcdcdc; */
+    /* Explanation: A light grey border for the select box. Perplexity's is very subtle, almost borderless, or a light grey like #DADCE0. */
+    border: 1px solid #DADCE0;
+  
+    /* Line 27: border-radius: 6px; */
+    /* Explanation: Slightly rounded corners for the select box. */
+    border-radius: 6px;
+  
+    /* Line 28: background-color: #fff; */
+    /* Explanation: White background for the select box. Can be `transparent` or match footer if desired. */
+    background-color: #fff; /* Or transparent / inherit */
+  
+    /* Line 29: font-size: 13px; */
+    /* Explanation: Inherits font size from footer, but can be set explicitly. */
+    font-size: inherit; /* Explicitly 13px or 12px for Perplexity */
+  
+    /* Line 30: color: #555; */
+    /* Explanation: Text color for the selected option. */
+    color: #5F6368;
+  
+    /* Line 31: cursor: pointer; */
+    /* Explanation: Hand cursor on hover. */
+    cursor: pointer;
+  }
+  
+  /* Line 32: .help-button { ... } */
+  /* Explanation: Styles for the help icon button. */
+  .help-button {
+    /* Line 33: background: none; */
+    /* Explanation: Transparent background. */
+    background: none;
+  
+    /* Line 34: border: none; */
+    /* Explanation: No border. */
+    border: none;
+  
+    /* Line 35: color: #555; */
+    /* Explanation: Sets the color of the icon inside the button. Perplexity: #5F6368. */
+    color: #5F6368;
+  
+    /* Line 36: cursor: pointer; */
+    /* Explanation: Hand cursor on hover. */
+    cursor: pointer;
+  
+    /* Line 37: display: flex; align-items: center; */
+    /* Explanation: Ensures the icon is well-aligned within the button, though often not strictly necessary for a single icon if padding is used. */
+    display: flex;
+    align-items: center;
+  
+    /* Line 38: padding: 4px; */
+    /* Explanation: Minimal padding around the icon to increase its clickable area slightly. */
+    padding: 4px;
+    border-radius: 50%; /* Make hover effect circular if desired */
+    transition: background-color 0.2s; /* Smooth hover */
+  }
+  
+  /* Line 39: .help-button:hover { ... } */
+  /* Explanation: Styles for the help button on hover. */
+  .help-button:hover {
+    /* Line 40: color: #000; */
+    /* Explanation: Darkens the icon color on hover. Perplexity: #202123. */
+    color: #202123;
+    background-color: #f0f0f0; /* Slight background on hover, like other icons */
+  }

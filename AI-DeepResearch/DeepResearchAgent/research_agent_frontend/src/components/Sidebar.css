@@ -1,0 +1,92 @@
+/* src/components/Sidebar.css */
+.sidebar {
+    width: 260px;
+    background-color: #f7f7f7; /* Perplexity-like light grey */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    box-sizing: border-box;
+    border-right: 1px solid #e0e0e0; /* Subtle border */
+  }
+  
+.sidebar-logo {
+display: flex;
+align-items: center;
+justify-content: flex-start; /* Align to left */
+margin-bottom: 24px;
+padding-left: 8px; /* Align with nav items */
+}
+
+.logo-placeholder {
+font-size: 28px; /* Adjust as needed */
+font-weight: bold;
+color: #333;
+}
+
+.new-thread-button {
+display: flex;
+align-items: center;
+background-color: #e9e9e9; /* Light button color */
+border: 1px solid #dcdcdc;
+border-radius: 8px;
+padding: 10px 12px;
+font-size: 14px;
+font-weight: 500;
+color: #333;
+cursor: pointer;
+margin-bottom: 24px;
+transition: background-color 0.2s;
+}
+
+.new-thread-button:hover {
+background-color: #dcdcdc;
+}
+
+.new-thread-button svg {
+margin-right: 8px;
+}
+
+.sidebar-nav {
+display: flex;
+flex-direction: column;
+gap: 8px; /* Space between nav items */
+}
+
+.nav-item {
+display: flex;
+align-items: center;
+padding: 10px 12px;
+border-radius: 8px;
+text-decoration: none;
+color: #555; /* Darker grey for text */
+font-size: 14px;
+font-weight: 500;
+}
+
+.nav-item:hover {
+background-color: #e9e9e9;
+color: #000;
+}
+
+.nav-item.active {
+background-color: #e0e0e0; /* Slightly darker for active */
+color: #000;
+font-weight: 600;
+}
+
+.nav-item svg {
+margin-right: 12px;
+}
+
+.sidebar-user {
+margin-top: auto;
+padding: 12px;
+display: flex;
+justify-content: center; /* Center user icon if it's alone */
+cursor: pointer;
+}
+
+.sidebar-user svg {
+color: #555;
+}

@@ -1,0 +1,196 @@
+/* src/components/MainContent.css */
+
+/* ... (previous styles for .main-content, .loading-indicator, .results-display, .windows-app-banner (which we can rename or adapt)) ... */
+/* Let's ensure the .main-content is still set up to center its direct children,
+   which will be the SearchBar and then the suggestions-area (or results-display). */
+   .main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #fafafa;
+    overflow-y: auto;
+    display: flex; /* Ensures direct children can be managed by flexbox */
+    /* Explanation: Stacks its children (the `info-banner` and `suggestion-cards-grid`) vertically. */
+    flex-direction: column;
+  
+    /* Line 7: align-items: center; */
+    /* Explanation: Centers its children (the banner and the grid container) horizontally within the `suggestions-area`. */
+    align-items: center;
+  }
+  
+  /* Line 8: NEW - Styles for the informational banner */
+  .info-banner {
+    /* Line 9: display: flex; */
+    /* Explanation: Makes the banner a flex container for its internal elements (icon, text, button). */
+    display: flex;
+  
+    /* Line 10: align-items: center; */
+    /* Explanation: Vertically aligns the icon, text block, and button in the center of the banner. */
+    align-items: center;
+  
+    /* Line 11: background-color: #f0f4f8; */
+    /* Explanation: A light grayish-blue background, similar to Perplexity's. */
+    background-color: #f0f4f8; /* Light grayish blue - Perplexity uses something like #F6F8FA or #EFF3F7 */
+  
+    /* Line 12: border: 1px solid #d8e0e8; */
+    /* Explanation: A subtle border. Perplexity's is very light, like #E5E7EB. */
+    border: 1px solid #d8e0e8; /* Or #E5E7EB */
+  
+    /* Line 13: border-radius: 12px; */
+    /* Explanation: Rounded corners for the banner. */
+    border-radius: 12px;
+  
+    /* Line 14: padding: 16px 20px; */
+    /* Explanation: Internal spacing: 16px top/bottom, 20px left/right. */
+    padding: 16px 20px;
+  
+    /* Line 15: margin-bottom: 24px; */
+    /* Explanation: Space below the banner, before the suggestion cards start. */
+    margin-bottom: 24px;
+  
+    /* Line 16: width: 100%; */
+    /* Explanation: The banner itself should take the full width available within `.suggestions-area` (up to its max-width). */
+    width: 100%;
+  
+    /* Line 17: max-width: 700px; */
+    /* Explanation: Constrains the banner's width to be consistent with the search bar, even if `.suggestions-area` is wider. */
+    max-width: 700px; /* Align with search bar width */
+  
+    /* Line 18: box-sizing: border-box; */
+    /* Explanation: Ensures that padding and border do not add to the total width/height of the element, making width calculations more predictable. */
+    box-sizing: border-box;
+  }
+  
+  /* Line 19: NEW - Styles for the icon within the banner */
+  .banner-icon {
+    /* Line 20: width: 32px; (Original Perplexity seems around 24px or 28px) */
+    /* Explanation: Sets the width of the icon. */
+    width: 28px;
+  
+    /* Line 21: height: 32px; */
+    /* Explanation: Sets the height of the icon. */
+    height: 28px;
+  
+    /* Line 22: margin-right: 16px; */
+    /* Explanation: Adds space to the right of the icon, separating it from the text. */
+    margin-right: 16px;
+  }
+  
+  /* Line 23: NEW - Styles for the text block within the banner */
+  .banner-text {
+    /* Line 24: flex-grow: 1; */
+    /* Explanation: Allows the text block to take up any available space between the icon and the button. */
+    flex-grow: 1;
+  }
+  
+  /* Line 25: NEW - Styles for the strong (bold) text in the banner */
+  .banner-text strong {
+    /* Line 26: display: block; */
+    /* Explanation: Makes the `<strong>` element a block-level element, so it takes its own line. */
+    display: block;
+  
+    /* Line 27: font-size: 15px; */
+    /* Explanation: Font size for the main banner title. */
+    font-size: 15px;
+  
+    /* Line 28: color: #333; */
+    /* Explanation: Dark text color. */
+    color: #202123; /* Perplexity's darker text color */
+  
+    /* Line 29: margin-bottom: 2px; */
+    /* Explanation: Small space below the strong text, before the paragraph. */
+    margin-bottom: 2px;
+  }
+  
+  /* Line 30: NEW - Styles for the paragraph text in the banner */
+  .banner-text p {
+    /* Line 31: font-size: 13px; */
+    /* Explanation: Font size for the secondary banner text. */
+    font-size: 13px;
+  
+    /* Line 32: color: #555; */
+    /* Explanation: Lighter text color for secondary information. */
+    color: #5F6368; /* Perplexity's muted text color */
+  
+    /* Line 33: margin: 0; */
+    /* Explanation: Removes default paragraph margins. */
+    margin: 0;
+  }
+  
+  /* Line 34: NEW - Styles for the button in the banner */
+  .banner-button {
+    /* Line 35: background: none; */
+    /* Explanation: Transparent background. */
+    background: none;
+  
+    /* Line 36: border: 1px solid #c0c8d0; */
+    /* Explanation: Light grey border. Perplexity's is very subtle, maybe #D1D5DB or even lighter. */
+    border: 1px solid #D1D5DB;
+  
+    /* Line 37: border-radius: 50%; */
+    /* Explanation: Makes the button circular. */
+    border-radius: 50%;
+  
+    /* Line 38: width: 32px; */
+    /* Explanation: Width of the circular button. */
+    width: 32px;
+  
+    /* Line 39: height: 32px; */
+    /* Explanation: Height of the circular button. */
+    height: 32px;
+  
+    /* Line 40: font-size: 18px; */
+    /* Explanation: Size of the arrow character. */
+    font-size: 18px;
+  
+    /* Line 41: color: #555; */
+    /* Explanation: Color of the arrow character. */
+    color: #5F6368;
+  
+    /* Line 42: cursor: pointer; */
+    /* Explanation: Hand cursor on hover. */
+    cursor: pointer;
+  
+    /* Line 43: display: flex; align-items: center; justify-content: center; */
+    /* Explanation: Flex properties to perfectly center the arrow character within the circular button. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  
+    /* Line 44: transition: background-color 0.2s; */
+    /* Explanation: Smooth transition for hover effect. */
+    transition: background-color 0.2s;
+  }
+  .banner-button:hover {
+      background-color: #e8eaed; /* Slight background on hover */
+  }
+  
+  
+  /* Line 45: NEW - Styles for the grid that holds suggestion cards */
+  .suggestion-cards-grid {
+    /* Line 46: display: flex; */
+    /* Explanation: Makes this a flex container. The `SuggestionCard` components will be its flex items. */
+    display: flex;
+  
+    /* Line 47: flex-wrap: wrap; */
+    /* Explanation: Allows the flex items (cards) to wrap onto the next line if they don't all fit in one row. This is key for responsiveness. */
+    flex-wrap: wrap;
+  
+    /* Line 48: gap: 16px; */
+    /* Explanation: Sets the space (gutter) both horizontally and vertically between the suggestion cards. */
+    gap: 16px;
+  
+    /* Line 49: justify-content: center; */
+    /* Explanation: When the cards wrap and there's extra space in the last row, this will center the cards in that row. It also centers them if there's only one row and it doesn't fill the full width of `suggestion-cards-grid`. */
+    justify-content: center;
+  
+    /* Line 50: width: 100%; */
+    /* Explanation: The grid container itself should take the full width of its parent (`.suggestions-area`). */
+    width: 100%;
+  }
+  
+  /* Remove the old .suggestions-placeholder and .windows-app-banner if they were defined separately,
+     as we've now integrated the banner into .info-banner and suggestions into .suggestion-cards-grid */
+  /*
+  .suggestions-placeholder { ... }
+  .windows-app-banner { ... }
+  */

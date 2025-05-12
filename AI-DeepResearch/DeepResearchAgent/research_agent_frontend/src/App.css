@@ -1,0 +1,39 @@
+/* src/App.css */
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh; /* Full viewport height */
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Takes up remaining space next to sidebar */
+  height: 100vh; /* Full viewport height */
+}
+
+/* Ensure MainContent takes available space and Footer stays at bottom */
+.content-wrapper .main-content {
+  flex-grow: 1; /* Allows main content to expand */
+  overflow-y: auto; /* Add scroll to main content if it overflows */
+}
+
+/*
+  Adjust Footer styling in App.css or Footer.css.
+  For a footer that is part of the scrollable main area (not fixed):
+*/
+/* Remove fixed positioning from Footer.css if you prefer this */
+/* And adjust App.css for the content-wrapper's Footer */
+.content-wrapper .footer {
+  flex-shrink: 0; /* Prevents footer from shrinking */
+}

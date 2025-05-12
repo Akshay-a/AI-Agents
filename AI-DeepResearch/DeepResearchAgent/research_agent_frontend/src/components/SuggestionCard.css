@@ -1,0 +1,205 @@
+/* src/components/SuggestionCard.css */
+
+/* Line 1: .suggestion-card { ... } */
+/* Explanation: Styles for the main container of each card. */
+.suggestion-card {
+    /* Line 2: background-color: #fff; */
+    /* Explanation: Sets the background color of the card to white. */
+    background-color: #fff;
+  
+    /* Line 3: border: 1px solid #e0e0e0; */
+    /* Explanation: Adds a 1-pixel solid border around the card. `#e0e0e0` is a light grey color, providing a subtle outline. */
+    border: 1px solid #e0e0e0;
+  
+    /* Line 4: border-radius: 12px; */
+    /* Explanation: Rounds the corners of the card by 12 pixels. This gives it a softer, more modern "card" look. Perplexity uses fairly rounded corners. */
+    border-radius: 12px;
+  
+    /* Line 5: padding: 16px; */
+    /* Explanation: Adds 16 pixels of space inside the card, between the border and its content, on all four sides. */
+    padding: 16px;
+  
+    /* Line 6: min-width: 280px; */
+    /* Explanation: Sets a minimum width for the card. Even if the content is very narrow or the container it's in is small, the card won't shrink below 280 pixels. */
+    min-width: 280px;
+  
+    /* Line 7: max-width: 320px; */
+    /* Explanation: Sets a maximum width for the card. This prevents cards from becoming too wide on larger screens if they are in a flexible container. */
+    max-width: 320px; /* Adjust as needed, Perplexity's seem around this or a bit wider */
+  
+    /* Line 8: cursor: pointer; */
+    /* Explanation: Changes the mouse cursor to a pointer (hand icon) when hovering over the card, indicating it's clickable (even if we haven't added click functionality yet). */
+    cursor: pointer;
+  
+    /* Line 9: transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out; */
+    /* Explanation: Smoothly animates changes to the `box-shadow` and `transform` properties over 0.2 seconds. `ease-in-out` is a timing function that makes the animation start and end smoothly. This is for the hover effect defined below. */
+    transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  
+    /* Line 10: font-family: inherit; */
+    /* Explanation: Ensures the card uses the same font family as its parent element in the DOM tree. This helps maintain consistent typography. */
+    font-family: inherit;
+  
+    /* Line 11: display: flex; */
+    /* Explanation: Makes the card a flex container. Its direct children (image, content, source) will be flex items. */
+    display: flex;
+  
+    /* Line 12: flex-direction: column; */
+    /* Explanation: Stacks the direct children of the card vertically. */
+    flex-direction: column;
+    /* Thought Process: This structure (flex column) allows elements like an image to be at the top, content in the middle, and source at the bottom, each taking full width within the card's padding. */
+  }
+  
+  /* Line 13: .suggestion-card:hover { ... } */
+  /* Explanation: Styles applied to the card when the mouse cursor is hovering over it. */
+  .suggestion-card:hover {
+    /* Line 14: box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); */
+    /* Explanation: Adds a more pronounced shadow on hover.
+       - `0`: horizontal offset.
+       - `4px`: vertical offset (shadow slightly lower).
+       - `12px`: blur radius (softer, more spread-out shadow).
+       - `rgba(0, 0, 0, 0.1)`: translucent black color.
+       This gives a "lifting" effect. */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+    /* Line 15: transform: translateY(-2px); */
+    /* Explanation: Moves the card up by 2 pixels vertically on hover. `translateY(-2px)` means move up along the Y-axis. Combined with the shadow, this enhances the "lifting" visual feedback. */
+    transform: translateY(-2px);
+  }
+  
+  /* Line 16: .suggestion-card-image { ... } */
+  /* Explanation: Styles for the optional image at the top of the card. */
+  .suggestion-card-image {
+    /* Line 17: width: 100%; */
+    /* Explanation: Makes the image take the full width available within its container (the card's padded area). */
+    width: 100%;
+  
+    /* Line 18: height: 120px; */
+    /* Explanation: Sets a fixed height for the image. This helps maintain a consistent layout for cards, especially when they are in a grid, even if image aspect ratios vary. */
+    height: 120px;
+  
+    /* Line 19: object-fit: cover; */
+    /* Explanation: This is important for how the image fills the fixed `width` and `height`.
+       - `cover`: The image will scale to maintain its aspect ratio while filling the element's entire content box. If the image's aspect ratio doesn't match the box's, then the image will be clipped to fit. This prevents distortion. */
+    object-fit: cover;
+  
+    /* Line 20: border-radius: 8px; */
+    /* Explanation: Rounds the corners of the image. Typically slightly less than the card's overall border-radius for a nice nested look. */
+    border-radius: 8px;
+  
+    /* Line 21: margin-bottom: 12px; */
+    /* Explanation: Adds some space below the image, before the main content text starts. */
+    margin-bottom: 12px;
+  }
+  
+  /* Line 22: .suggestion-card-content { ... } */
+  /* Explanation: Styles for the div that groups the icon and the text block (title/subtitle). */
+  .suggestion-card-content {
+    /* Line 23: display: flex; */
+    /* Explanation: Makes this a flex container. Its children (the icon span and the text div) will be flex items. */
+    display: flex;
+  
+    /* Line 24: align-items: flex-start; */
+    /* Explanation: Aligns the flex items (icon and text block) to the top of the cross-axis. Since the default flex-direction is `row`, this means the icon and the start of the text block will be vertically aligned at their top. */
+    align-items: flex-start;
+  
+    /* Line 25: gap: 12px; */
+    /* Explanation: A convenient CSS property that sets the space (gutter) between flex items. Here, it adds 12px of space between the icon (if present) and the text block. */
+    gap: 12px;
+  
+    /* Line 26: flex-grow: 1; */
+    /* Explanation: If the `.suggestion-card` is a flex container (which it is, with `flex-direction: column`), this allows `.suggestion-card-content` to grow and take up any available vertical space within the card, especially if there's no image or source. This helps push the source to the bottom if it exists. */
+    flex-grow: 1;
+  }
+  
+  /* Line 27: .suggestion-card-icon { ... } */
+  /* Explanation: Styles for the icon (if present). */
+  .suggestion-card-icon {
+    /* Line 28: font-size: 20px; */
+    /* Explanation: Sets the size of the icon. Adjust as needed. React Icons are often sized using font-size. */
+    font-size: 20px;
+  
+    /* Line 29: color: #555; */
+    /* Explanation: Sets the color of the icon. `#555` is a dark grey. */
+    color: #555;
+  
+    /* Line 30: margin-top: 2px; */
+    /* Explanation: Adds a small top margin to the icon. This can sometimes help visually align an icon with the baseline or cap-height of adjacent text, depending on the specific icon and font. */
+    margin-top: 2px; /* Fine-tune for visual alignment with title */
+  }
+  
+  /* Line 31: .suggestion-card-text { ... } */
+  /* Explanation: Styles for the div that groups the title and subtitle. */
+  .suggestion-card-text {
+    /* Line 32: display: flex; */
+    /* Explanation: Makes this a flex container. */
+    display: flex;
+  
+    /* Line 33: flex-direction: column; */
+    /* Explanation: Stacks its children (title and subtitle) vertically. */
+    flex-direction: column;
+    /* Thought Process: This ensures the subtitle appears directly below the title. */
+  }
+  
+  /* Line 34: .suggestion-card-title { ... } */
+  /* Explanation: Styles for the card's title (the `<h4>` element). */
+  .suggestion-card-title {
+    /* Line 35: font-size: 15px; */
+    /* Explanation: Sets the font size of the title. Perplexity titles are fairly small and clean. */
+    font-size: 15px;
+  
+    /* Line 36: font-weight: 600; */
+    /* Explanation: Sets the font weight. `600` is typically semi-bold. `400` is normal, `700` is bold. */
+    font-weight: 600;
+  
+    /* Line 37: color: #333; */
+    /* Explanation: Sets the text color. `#333` is a very dark grey, almost black, common for primary text. */
+    color: #333;
+  
+    /* Line 38: margin: 0 0 4px 0; */
+    /* Explanation: Sets the margins around the title. `0` for top, `0` for right, `4px` for bottom (to create space between title and subtitle), `0` for left. */
+    margin: 0 0 4px 0;
+  
+    /* Line 39: line-height: 1.3; */
+    /* Explanation: Sets the height of a line of text. `1.3` means 1.3 times the font size. This can improve readability, especially for multi-line titles, by adding a bit more space between lines. */
+    line-height: 1.3;
+  }
+  
+  /* Line 40: .suggestion-card-subtitle { ... } */
+  /* Explanation: Styles for the card's subtitle (the `<p>` element). */
+  .suggestion-card-subtitle {
+    /* Line 41: font-size: 13px; */
+    /* Explanation: Smaller font size than the title, as is typical for subtitles. */
+    font-size: 13px;
+  
+    /* Line 42: color: #666; */
+    /* Explanation: A medium grey color, making it less prominent than the title. */
+    color: #666;
+  
+    /* Line 43: margin: 0; */
+    /* Explanation: Removes any default browser margins from the paragraph, allowing the title's bottom margin to control the spacing. */
+    margin: 0;
+  
+    /* Line 44: line-height: 1.4; */
+    /* Explanation: Slightly more line-height for readability of potentially longer subtitle text. */
+    line-height: 1.4;
+  }
+  
+  /* Line 45: .suggestion-card-source { ... } */
+  /* Explanation: Styles for the source text at the bottom of the card. */
+  .suggestion-card-source {
+    /* Line 46: font-size: 12px; */
+    /* Explanation: Even smaller font size for ancillary information. */
+    font-size: 12px;
+  
+    /* Line 47: color: #888; */
+    /* Explanation: A lighter grey color, making it the least prominent text on the card. */
+    color: #888;
+  
+    /* Line 48: margin-top: 12px; */
+    /* Explanation: Adds space above the source text, separating it from the content above. `flex-grow: 1` on `.suggestion-card-content` helps push this down if the content is short. */
+    margin-top: 12px;
+  
+    /* Line 49: text-align: left; */
+    /* Explanation: Ensures the source text is aligned to the left, which is standard for this kind of information. */
+    text-align: left;
+  }
