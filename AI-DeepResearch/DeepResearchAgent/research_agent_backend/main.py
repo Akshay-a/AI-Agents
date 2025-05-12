@@ -13,12 +13,12 @@ from task_manager import TaskManager
 from orchestrator import Orchestrator
 
 # Import DB settings and handler
-from research_agent_backend.config.settings import DBSettings
-from research_agent_backend.database_layer.sqlite_handler import SQLiteHandler
-from research_agent_backend.database_layer.base_db_handler import BaseDBHandler
+from config.settings import DBSettings
+from database_layer.database import Database
+from database_layer.base_db_handler import BaseDBHandler
 
 
-from research_agent_backend.api.auth_router import router as auth_router
+from api.auth_router import router as auth_router
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -40,7 +40,7 @@ app.add_middleware(
 
 
 db_settings = DBSettings()
-db_handler = SQLiteHandler(db_settings.connection_string)
+db_handler = Database(db_settings.connection_string)
 
 # Dependency to provide DB handler to routes
 async def get_db_handler() -> BaseDBHandler:
