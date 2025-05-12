@@ -2,23 +2,92 @@ import logging
 import json
 import asyncio
 import os
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, status, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from typing import Dict, Optional, List 
+from typing import Dict, Optional, List, Annotated
 from models import InitialTopic, UserCommand, Task, TaskType, JobStatus, StatusUpdate, TaskSuccessMessage, JobFailedMessage
 from websocket_manager import ConnectionManager
 from task_manager import TaskManager
 from orchestrator import Orchestrator
 
-load_dotenv()
+# Import DB settings and handler
+from research_agent_backend.config.settings import DBSettings
+from research_agent_backend.database_layer.sqlite_handler import SQLiteHandler
+from research_agent_backend.database_layer.base_db_handler import BaseDBHandler
+
+
+from research_agent_backend.api.auth_router import router as auth_router
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
-app = FastAPI(title="Multi-Agent Research")
+load_dotenv()
+
+app = FastAPI(title="Research Agent API")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # TODO: change in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+db_settings = DBSettings()
+db_handler = SQLiteHandler(db_settings.connection_string)
+
+# Dependency to provide DB handler to routes
+async def get_db_handler() -> BaseDBHandler:
+    return db_handler
+
+# Override the get_db_handler dependency in auth_router
+auth_router.dependencies = [Depends(get_db_handler)]
+
+# Include routers
+app.include_router(auth_router)
+
+# Database lifecycle events
+@app.on_event("startup")
+async def startup_db_client():
+    logger.info("Connecting to database...")
+    await db_handler.connect()
+    logger.info("Initializing database schema...")
+    await db_handler.initialize_schema()
+    logger.info("Database initialization complete")
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    logger.info("Disconnecting from database...")
+    await db_handler.disconnect()
+    logger.info("Database disconnected")
+
+# Root endpoint
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """
+    <html>
+        <head>
+            <title>Research Agent API</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                h1 { color: #333; }
+                p { color: #666; }
+                code { background-color: #f4f4f4; padding: 2px 5px; border-radius: 3px; }
+            </style>
+        </head>
+        <body>
+            <h1>Research Agent API</h1>
+            <p>The API is up and running. Visit <code>/docs</code> for the API documentation.</p>
+        </body>
+    </html>
+    """
+
 connection_manager = ConnectionManager()
 task_manager = TaskManager(connection_manager=connection_manager)
 orchestrator = Orchestrator(task_manager=task_manager)
