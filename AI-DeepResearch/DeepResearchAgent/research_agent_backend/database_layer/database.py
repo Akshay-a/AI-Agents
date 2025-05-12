@@ -1,101 +1,89 @@
 import os
 import json
-import sqlite3
 import uuid
-from typing import Dict, Optional, Any, List, Union
+import logging
 import aiosqlite
+from typing import Dict, Optional, Any, List, Union
+from contextlib import asynccontextmanager
 
 from database_layer.base_db_handler import BaseDBHandler
 
+logger = logging.getLogger(__name__)
 
-class SQLiteHandler(BaseDBHandler):
+DEFAULT_DB_PATH = "research_agent.db"
+SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+
+class Database(BaseDBHandler):
     """
-    SQLite implementation of the database handler interface.
+    Implementation of the database handler interface using SQLite.
     Uses aiosqlite for async database operations.
     """
     
-    def __init__(self, db_url: str):
-        """
-        Initialize the SQLite handler with a database URL.
+    def __init__(self, connection_string: str):
         
-        Args:
-            db_url: SQLite database URL (e.g., 'sqlite:///./research_agent.db')
-        """
-        # Extract file path from the URL
-        if db_url.startswith('sqlite:///'):
-            self.db_path = db_url.replace('sqlite:///', '')
-        elif db_url.startswith('sqlite+aiosqlite:///'):
-            self.db_path = db_url.replace('sqlite+aiosqlite:///', '')
+        # Extract file path from the connection string
+        if connection_string.startswith('sqlite:///'):
+            self.db_path = connection_string.replace('sqlite:///', '')
+        elif connection_string.startswith('sqlite+aiosqlite:///'):
+            self.db_path = connection_string.replace('sqlite+aiosqlite:///', '')
         else:
-            self.db_path = db_url
+            self.db_path = connection_string
             
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
         
+        db_dir = os.path.dirname(os.path.abspath(self.db_path))
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            logger.info(f"Created database directory: {db_dir}")
+            
         self.connection = None
+        logger.info(f"Database initialized with path: {self.db_path}")
     
     async def connect(self) -> None:
-        """Establish a connection to the SQLite database."""
-        self.connection = await aiosqlite.connect(self.db_path)
-        # Enable foreign keys
-        await self.connection.execute("PRAGMA foreign_keys = ON")
-        # Use Row factory to get column names in results
-        self.connection.row_factory = aiosqlite.Row
+        """Establish a connection to the database."""
+        try:
+            self.connection = await aiosqlite.connect(self.db_path)
+            # Enable foreign keys
+            await self.connection.execute("PRAGMA foreign_keys = ON")
+            # Use Row factory to get column names in results
+            self.connection.row_factory = aiosqlite.Row
+            logger.info(f"Database connection established to {self.db_path}")
+        except Exception as e:
+            logger.error(f"Error connecting to database {self.db_path}: {e}")
+            raise
     
     async def disconnect(self) -> None:
-        """Close the SQLite database connection."""
         if self.connection:
             await self.connection.close()
             self.connection = None
+            logger.info("Database connection closed.")
     
     async def initialize_schema(self) -> None:
-        """Initialize the database schema (create tables if they don't exist)."""
         if not self.connection:
             await self.connect()
-            
-        # Create jobs table
-        await self.connection.execute("""
-        CREATE TABLE IF NOT EXISTS jobs (
-            id TEXT PRIMARY KEY,
-            user_query TEXT NOT NULL,
-            status TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            report_path TEXT
-        )
-        """)
         
-        # Create tasks table
-        await self.connection.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id TEXT PRIMARY KEY,
-            job_id TEXT NOT NULL,
-            task_type TEXT NOT NULL,
-            description TEXT NOT NULL,
-            parameters TEXT,  -- JSON serialized parameters
-            status TEXT NOT NULL,
-            result TEXT,  -- JSON serialized result
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
-        )
-        """)
-        
-        # Create users table for authentication
-        await self.connection.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-        
-        await self.connection.commit()
+        try:
+            # Read schema from SQL file
+            with open(SCHEMA_PATH, 'r') as f:
+                schema_sql = f.read()
+                
+            # Execute schema creation script
+            await self.connection.executescript(schema_sql)
+            await self.connection.commit()
+            logger.info(f"Database schema initialized successfully from {SCHEMA_PATH}.")
+        except Exception as e:
+            logger.error(f"Error initializing database schema: {e}")
+            raise
     
     async def get_job_by_id(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a job by its ID."""
+        """
+        Retrieve a job by its ID.
+        
+        Args:
+            job_id: The unique identifier of the job
+            
+        Returns:
+            The job data as a dictionary, or None if not found
+        """
         if not self.connection:
             await self.connect()
             
@@ -108,7 +96,15 @@ class SQLiteHandler(BaseDBHandler):
             return None
     
     async def create_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new job in the database."""
+        """
+        Create a new job in the database.
+        
+        Args:
+            job_data: A dictionary containing the job data
+            
+        Returns:
+            The created job data including any generated IDs
+        """
         if not self.connection:
             await self.connect()
             
@@ -129,7 +125,7 @@ class SQLiteHandler(BaseDBHandler):
         # Insert the job
         await self.connection.execute(
             """
-            INSERT INTO jobs (id, user_query, status, report_path)
+            INSERT INTO jobs (id, user_query, status, final_report_path)
             VALUES (?, ?, ?, ?)
             """,
             (job_id, user_query, status, report_path)
@@ -140,7 +136,16 @@ class SQLiteHandler(BaseDBHandler):
         return await self.get_job_by_id(job_id)
     
     async def update_job_status(self, job_id: str, status: str) -> bool:
-        """Update the status of a job."""
+        """
+        Update the status of a job.
+        
+        Args:
+            job_id: The unique identifier of the job
+            status: The new status value
+            
+        Returns:
+            True if the update was successful, False otherwise
+        """
         if not self.connection:
             await self.connect()
             
@@ -155,11 +160,20 @@ class SQLiteHandler(BaseDBHandler):
             )
             await self.connection.commit()
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error updating job status: {e}")
             return False
     
     async def get_task_by_id(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a task by its ID."""
+        """
+        Retrieve a task by its ID.
+        
+        Args:
+            task_id: The unique identifier of the task
+            
+        Returns:
+            The task data as a dictionary, or None if not found
+        """
         if not self.connection:
             await self.connect()
             
@@ -178,7 +192,15 @@ class SQLiteHandler(BaseDBHandler):
             return None
     
     async def create_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new task in the database."""
+        """
+        Create a new task in the database.
+        
+        Args:
+            task_data: A dictionary containing the task data
+            
+        Returns:
+            The created task data including any generated IDs
+        """
         if not self.connection:
             await self.connect()
             
@@ -196,23 +218,18 @@ class SQLiteHandler(BaseDBHandler):
         task_type = task_data['task_type']
         description = task_data['description']
         status = task_data['status']
+        sequence_order = task_data.get('sequence_order', 0)
         
         # Serialize JSON fields
-        parameters = task_data.get('parameters')
-        if parameters:
-            parameters = json.dumps(parameters)
-            
-        result = task_data.get('result')
-        if result:
-            result = json.dumps(result)
+        parameters = json.dumps(task_data.get('parameters', {})) if task_data.get('parameters') else None
         
         # Insert the task
         await self.connection.execute(
             """
-            INSERT INTO tasks (id, job_id, task_type, description, parameters, status, result)
+            INSERT INTO tasks (id, job_id, task_type, description, parameters, status, sequence_order)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (task_id, job_id, task_type, description, parameters, status, result)
+            (task_id, job_id, task_type, description, parameters, status, sequence_order)
         )
         await self.connection.commit()
         
@@ -220,48 +237,54 @@ class SQLiteHandler(BaseDBHandler):
         return await self.get_task_by_id(task_id)
     
     async def update_task_status(self, task_id: str, status: str, result: Optional[Any] = None) -> bool:
-        """Update the status and optionally the result of a task."""
+        """
+        Update the status and optionally the result of a task.
+        
+        Args:
+            task_id: The unique identifier of the task
+            status: The new status value
+            result: Optional result data for completed tasks
+            
+        Returns:
+            True if the update was successful, False otherwise
+        """
         if not self.connection:
             await self.connect()
             
         try:
             # Serialize result if provided
-            result_json = None
-            if result is not None:
-                result_json = json.dumps(result)
-                
-            if result_json:
-                await self.connection.execute(
-                    """
-                    UPDATE tasks 
-                    SET status = ?, result = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    """,
-                    (status, result_json, task_id)
-                )
-            else:
-                await self.connection.execute(
-                    """
-                    UPDATE tasks 
-                    SET status = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    """,
-                    (status, task_id)
-                )
-                
+            result_json = json.dumps(result) if result is not None else None
+            
+            await self.connection.execute(
+                """
+                UPDATE tasks 
+                SET status = ?, result = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (status, result_json, task_id)
+            )
             await self.connection.commit()
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error updating task status: {e}")
             return False
     
     async def get_tasks_by_job_id(self, job_id: str) -> List[Dict[str, Any]]:
-        """Retrieve all tasks associated with a job."""
+        """
+        Retrieve all tasks associated with a job.
+        
+        Args:
+            job_id: The unique identifier of the job
+            
+        Returns:
+            A list of task dictionaries
+        """
         if not self.connection:
             await self.connect()
             
         tasks = []
         async with self.connection.execute(
-            "SELECT * FROM tasks WHERE job_id = ? ORDER BY created_at ASC", (job_id,)
+            "SELECT * FROM tasks WHERE job_id = ? ORDER BY sequence_order ASC", (job_id,)
         ) as cursor:
             async for row in cursor:
                 task_dict = dict(row)
