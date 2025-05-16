@@ -7,7 +7,7 @@ const ResearchContext = createContext();
 
 // Create a provider component
 export const ResearchProvider = ({ children }) => {
-  // Generate a unique client ID for WebSocket connection
+  // Generate a unique client ID for WebSocket connection/communication as we will pass this in headers
   const [clientId] = useState(() => uuidv4());
   
   // Research state
@@ -15,10 +15,13 @@ export const ResearchProvider = ({ children }) => {
   const [jobId, setJobId] = useState(null);
   const [plan, setPlan] = useState([]);
   const [completedTaskIds, setCompletedTaskIds] = useState([]);
+  const [taskStatuses, setTaskStatuses] = useState({}); // Store task statuses: { taskId: 'COMPLETED'|'ERROR'|'PENDING' }
+  const [taskErrors, setTaskErrors] = useState({}); // Store error messages for failed tasks
   const [report, setReport] = useState('');
   const [status, setStatus] = useState('idle'); // idle, loading, researching, completed, failed
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // connecting, connected, disconnected
+  const [currentStatusMessage, setCurrentStatusMessage] = useState(''); // Track current job progress message
   
   // Use a ref for the WebSocket connection to avoid unnecessary re-renders
   const wsConnectionRef = useRef(null);
@@ -41,70 +44,126 @@ export const ResearchProvider = ({ children }) => {
       return;
     }
     
-    // Use jobIdRef.current for comparison
-    if (data.job_id && data.job_id !== jobIdRef.current && !['active_jobs'].includes(data.type)) {
-      console.log(`Ignoring message for job ${data.job_id} (current context job ${jobIdRef.current})`);
+    // Extract payload if present
+    const messageData = data.payload || data;
+    const messageType = data.type;
+    
+    // Check job_id match with current context
+    const jobIdInMessage = messageData.job_id;
+    
+    // If we don't have a jobId set yet but we're receiving messages for a job,
+    // and we're in a loading or researching state, let's adopt that job ID
+    if (jobIdInMessage && !jobIdRef.current && (statusRef.current === 'loading' || statusRef.current === 'researching')) {
+      console.log(`Adopting job ID ${jobIdInMessage} as the current context job`);
+      setJobId(jobIdInMessage);
+      // Update the ref immediately to ensure subsequent message handling works
+      jobIdRef.current = jobIdInMessage;
+    }
+    
+    // Now check if this message is for our current job
+    if (jobIdInMessage && jobIdInMessage !== jobIdRef.current && !['active_jobs'].includes(messageType)) {
+      console.log(`Ignoring message for job ${jobIdInMessage} (current context job ${jobIdRef.current})`);
       return;
     }
 
-    switch (data.type) {
+    switch (messageType) {
+      case 'job_progress':
+        // Handle job progress messages
+        console.log('Processing job_progress message:', messageData.message);
+        setCurrentStatusMessage(messageData.message || '');
+        
+        // If this is the first message about the research plan being generated, make sure we're in researching state
+        if (messageData.message && messageData.message.includes('Generating research plan')) {
+          setStatus('researching');
+        }
+        break;
+        
+      case 'task_failed':
+        // Handle task failure messages
+        console.log('Processing task_failed message:', messageData);
+        if (messageData.error_message) {
+          setError(messageData.error_message);
+        }
+        
+        // Update task status to ERROR
+        if (messageData.task_id) {
+          setTaskStatuses(prev => ({
+            ...prev,
+            [messageData.task_id]: 'ERROR'
+          }));
+          
+          // Store the error message for this task
+          setTaskErrors(prev => ({
+            ...prev,
+            [messageData.task_id]: messageData.error_message || 'Task failed'
+          }));
+        }
+        break;
+        
       case 'task_success':
+        // Update completedTaskIds for backward compatibility
         setCompletedTaskIds(prev => {
           // Avoid duplicates
-          if (prev.includes(data.task_id)) return prev;
-          return [...prev, data.task_id];
+          if (prev.includes(messageData.task_id)) return prev;
+          return [...prev, messageData.task_id];
         });
+        
+        // Update task status to COMPLETED
+        if (messageData.task_id) {
+          setTaskStatuses(prev => ({
+            ...prev,
+            [messageData.task_id]: 'COMPLETED'
+          }));
+        }
         break;
       
       case 'job_status':
         // Important: When job_id matches, update main status
-        if (data.job_id === jobIdRef.current || !jobIdRef.current) { // Process if it matches current job or if no job is set yet (e.g. initial status from a previous job)
-            if (data.status === 'COMPLETED') {
+        if (jobIdInMessage === jobIdRef.current || !jobIdRef.current) { // Process if it matches current job or if no job is set yet
+            if (messageData.status === 'COMPLETED') {
               setStatus('completed');
-            } else if (data.status === 'FAILED') {
+            } else if (messageData.status === 'FAILED') {
               setStatus('failed');
-              setError(data.detail || 'Research job failed');
-            } else if (data.status === 'RUNNING') {
+              setError(messageData.detail || 'Research job failed');
+            } else if (messageData.status === 'RUNNING') {
               setStatus('researching');
               // Clear any previous errors when job starts running
               setError(null);
-            } else if (data.status === 'PAUSED') {
+            } else if (messageData.status === 'PAUSED') {
               setStatus('paused');
             }
         } else {
-            console.log(`job_status for ${data.job_id} (status: ${data.status}) ignored as it doesn't match current job ${jobIdRef.current}`);
+            console.log(`job_status for ${jobIdInMessage} (status: ${messageData.status}) ignored as it doesn't match current job ${jobIdRef.current}`);
         }
         break;
       
       case 'final_report':
         try {
-          console.log('ResearchContext: Matched final_report case. Data:', JSON.stringify(data));
+          console.log('ResearchContext: Matched final_report case. Data:', JSON.stringify(messageData));
           // Use jobIdRef.current for comparison
-          if (jobIdRef.current && data.job_id !== jobIdRef.current) { 
-            //Need to handle this scenario IN FUTURE , prolly add a db call to fetch if socket connection is lost
-            console.warn(`ResearchContext: final_report for job ${data.job_id} does not match current context job ${jobIdRef.current}. Ignoring.`);
+          if (jobIdRef.current && jobIdInMessage !== jobIdRef.current) { 
+            console.warn(`ResearchContext: final_report for job ${jobIdInMessage} does not match current context job ${jobIdRef.current}. Ignoring.`);
             return;
           }
           console.log('ResearchContext: job_id matches or initial load. Processing final_report.');
           
-          if (typeof data.report_markdown === 'string' && data.report_markdown.trim()) {
-            //debug logs to be removed after moved to aws
-            console.log('Setting final report:', data.report_markdown.slice(0, 100) + '...');
-            console.log('Final report length:', data.report_markdown.length);
-            setReport(data.report_markdown);
+          // Check for report_markdown in both direct and payload structure
+          const reportMarkdown = messageData.report_markdown;
+          
+          if (typeof reportMarkdown === 'string' && reportMarkdown.trim()) {
+            console.log('Setting final report:', reportMarkdown.slice(0, 100) + '...');
+            console.log('Final report length:', reportMarkdown.length);
+            setReport(reportMarkdown);
             setStatus('completed'); // Ensure status is completed when report is set
           } else {
-            console.error('Report markdown is invalid:', data.report_markdown);
-            // Don't throw error here necessarily, could be an empty report
-            // setError('Invalid or empty report_markdown received'); 
-            // setStatus('failed');
-            if (jobIdRef.current && data.job_id === jobIdRef.current) {
+            console.error('Report markdown is invalid:', reportMarkdown);
+            if (jobIdRef.current && jobIdInMessage === jobIdRef.current) {
                 console.warn("Final report markdown was empty or invalid for the current job. Report not set.")
             }
           }
         } catch (error) {
           console.error('Error processing final report:', error);
-          if (jobIdRef.current && data.job_id === jobIdRef.current) { // Only set error if it's for the current job
+          if (jobIdRef.current && jobIdInMessage === jobIdRef.current) { // Only set error if it's for the current job
             setError('Failed to process research report');
             setStatus('failed');
           }
@@ -113,20 +172,23 @@ export const ResearchProvider = ({ children }) => {
       
       case 'job_failed':
         // Only update error and status if it's for the current job
-        if (data.job_id === jobIdRef.current) {
-            setError(data.error_message || 'Research job failed');
+        if (jobIdInMessage === jobIdRef.current) {
+            // Get error message from appropriate property
+            const errorMessage = messageData.error_message || messageData.error || 'Research job failed';
+            console.log('Setting error state from job_failed message:', errorMessage);
+            setError(errorMessage);
             setStatus('failed');
         } else {
-            console.log(`job_failed message for ${data.job_id} ignored as it doesn't match current job ${jobIdRef.current}`);
+            console.log(`job_failed message for ${jobIdInMessage} ignored as it doesn't match current job ${jobIdRef.current}`);
         }
         break;
       
       case 'task_streaming':
-        if (data.job_id === jobIdRef.current && data.content) {
+        if (jobIdInMessage === jobIdRef.current && messageData.content) {
           setReport(prev => {
             // Only append if the content is new
-            if (!prev.includes(data.content)) {
-              return prev + '\n' + data.content;
+            if (!prev.includes(messageData.content)) {
+              return prev + '\n' + messageData.content;
             }
             return prev;
           });
@@ -135,11 +197,11 @@ export const ResearchProvider = ({ children }) => {
         
       case 'active_jobs':
         // Log active jobs for debugging
-        console.log('Active jobs:', data.jobs);
+        console.log('Active jobs:', messageData.jobs);
         break;
       
       default:
-        console.log('Unhandled WebSocket message type:', data.type, data);
+        console.log('Unhandled WebSocket message type:', messageType, data);
     }
   }, []); // REMOVED jobId from dependencies, handlers use refs now
 
@@ -154,21 +216,38 @@ export const ResearchProvider = ({ children }) => {
     }
   }, []); // REMOVED status from dependencies, handlers use refs now
 
-  // Initialize WebSocket connection
+  // Initialize WebSocket connection - only create/destroy on mount/unmount
   useEffect(() => {
     console.log("WebSocket Connection useEffect triggered.");
-    if (!wsConnectionRef.current) {
+    const createConnection = () => {
       console.log('Creating new WebSocket connection via ResearchContext useEffect...');
       const ws = createWebSocketConnection(
         clientId,
         handleWebSocketMessage, // This function now has a stable reference
-        handleReconnect         // This function also has a stable reference
+        handleReconnect,        // This function also has a stable reference
+        (isConnected) => {      // Add connection status callback
+          setConnectionStatus(isConnected ? 'connected' : 'connecting');
+        }
       );
       wsConnectionRef.current = ws;
+    };
+
+    if (!wsConnectionRef.current) {
+      createConnection();
     }
 
+    // Try to reconnect if no connection is present
+    const checkConnectionInterval = setInterval(() => {
+      if (wsConnectionRef.current && wsConnectionRef.current.getWebSocket()?.readyState !== WebSocket.OPEN) {
+        console.log("WebSocket connection check: Connection not open, attempting to reconnect...");
+        createConnection();
+      }
+    }, 10000); // Check every 10 seconds
+
+    // Only run cleanup when component unmounts, not on every render
     return () => {
-      console.log("WebSocket Connection useEffect cleanup running.");
+      console.log("WebSocket Connection useEffect cleanup running - COMPONENT UNMOUNTING.");
+      clearInterval(checkConnectionInterval);
       if (wsConnectionRef.current) {
         console.log("Closing WebSocket connection from ResearchContext cleanup.");
         wsConnectionRef.current.close();
@@ -176,7 +255,7 @@ export const ResearchProvider = ({ children }) => {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]); // Now only depends on clientId (and implicitly stable handlers)
+  }, []); // Empty dependency array - only run on mount/unmount
   // Note: ESLint might complain about handleWebSocketMessage and handleReconnect missing, 
   // but they are stable due to their own empty dependency arrays in useCallback.
   // If ESLint is strict, they can be added, as their references won't change.
@@ -191,6 +270,8 @@ export const ResearchProvider = ({ children }) => {
       setJobId(null);
       setPlan([]);
       setCompletedTaskIds([]);
+      setTaskStatuses({});
+      setTaskErrors({});
       setReport('');
       
       // Ensure WebSocket connection is active
@@ -198,17 +279,20 @@ export const ResearchProvider = ({ children }) => {
         wsConnectionRef.current.reconnect();
       }
       
-      // Start the research job
-      const result = await startResearchJob(researchQuery);
+      // Start the research job - pass clientId to match WebSocket connection
+      console.log(`Starting research with query "${researchQuery}" and client ID "${clientId}"`);
+      const result = await startResearchJob(researchQuery, clientId);
       
       if (result.job_id && result.plan) {
         setJobId(result.job_id);
         setPlan(result.plan);
         setStatus('researching');
+        console.log(`Research job ${result.job_id} started successfully with ${result.plan.length} planned tasks`);
       } else {
         throw new Error('Invalid response from server');
       }
     } catch (error) {
+      console.error('Failed to start research:', error);
       setError(error.message || 'Failed to start research');
       setStatus('failed');
     }
@@ -216,7 +300,17 @@ export const ResearchProvider = ({ children }) => {
 
   // Check if a task is completed
   const isTaskCompleted = (taskId) => {
-    return completedTaskIds.includes(taskId);
+    return completedTaskIds.includes(taskId) || taskStatuses[taskId] === 'COMPLETED';
+  };
+  
+  // Get the status of a task
+  const getTaskStatus = (taskId) => {
+    return taskStatuses[taskId] || 'PENDING';
+  };
+  
+  // Get the error message for a task
+  const getTaskError = (taskId) => {
+    return taskErrors[taskId] || null;
   };
   
   // Send a message through the WebSocket
@@ -233,12 +327,17 @@ export const ResearchProvider = ({ children }) => {
     jobId,
     plan,
     completedTaskIds,
+    taskStatuses,
+    taskErrors,
     report,
     status,
     error,
     connectionStatus,
+    currentStatusMessage,
     startResearch,
     isTaskCompleted,
+    getTaskStatus,
+    getTaskError,
     sendMessage,
   };
 

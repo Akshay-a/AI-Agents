@@ -1,10 +1,10 @@
 import React from 'react';
 import './PlanDisplay.css';
 import { useResearch } from '../contexts/ResearchContext';
-import { FiClock, FiCheck, FiLoader, FiAlertCircle, FiInfo } from 'react-icons/fi';
+import { FiClock, FiCheck, FiLoader, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
 
 const PlanDisplay = () => {
-  const { plan, isTaskCompleted, status, error, connectionStatus } = useResearch();
+  const { plan, isTaskCompleted, getTaskStatus, getTaskError, status, error, connectionStatus, currentStatusMessage } = useResearch();
 
   // Don't render if there's no plan
   if (!plan || plan.length === 0) {
@@ -28,6 +28,11 @@ const PlanDisplay = () => {
               ></div>
             </div>
             <span className="progress-text">{Math.round(progressPercentage)}% Complete</span>
+            {currentStatusMessage && (
+              <div className="current-status-message">
+                <span>{currentStatusMessage}</span>
+              </div>
+            )}
           </div>
         )}
         {status === 'completed' && (
@@ -59,9 +64,16 @@ const PlanDisplay = () => {
       
       <ul className="plan-list">
         {plan.map((task, index) => {
-          // Determine the task status
-          const isCompleted = isTaskCompleted(task.id);
-          const isRunning = !isCompleted && 
+          // Get the task status from the context
+          const taskStatus = getTaskStatus(task.id);
+          const taskError = getTaskError(task.id);
+          
+          // Determine if the task is completed or has an error
+          const isCompleted = taskStatus === 'COMPLETED';
+          const hasError = taskStatus === 'ERROR';
+          
+          // Determine if the task is running (for animation purposes)
+          const isRunning = !isCompleted && !hasError && 
             ((index === 0 && status === 'researching') || 
              (index > 0 && isTaskCompleted(plan[index - 1]?.id) && !isTaskCompleted(task.id)));
           
@@ -72,6 +84,9 @@ const PlanDisplay = () => {
           if (isCompleted) {
             taskClass = 'completed';
             TaskIcon = FiCheck;
+          } else if (hasError) {
+            taskClass = 'error';
+            TaskIcon = FiX;
           } else if (isRunning) {
             taskClass = 'running';
             TaskIcon = FiLoader;
@@ -79,8 +94,8 @@ const PlanDisplay = () => {
           
           return (
             <li 
-              key={task.id} 
-              id={`task-item-${task.id}`}
+              key={task.id || `task-${index}`} 
+              id={`task-item-${task.id || index}`}
               className={`plan-item ${taskClass}`}
             >
               <div className="task-icon-container">
@@ -95,6 +110,9 @@ const PlanDisplay = () => {
                 <span className="task-description">{task.description}</span>
                 {isRunning && (
                   <span className="task-status-text">In progress...</span>
+                )}
+                {hasError && (
+                  <span className="task-error-text">{taskError || 'Task failed'}</span>
                 )}
                 {isCompleted && task.type === 'SEARCH' && (
                   <span className="task-result-summary">Found relevant sources</span>

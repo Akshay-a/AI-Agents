@@ -74,6 +74,17 @@
   white-space: nowrap;
 }
 
+.current-status-message {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: #dbeafe;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 13px;
+  color: #1e40af;
+  border-left: 3px solid #3b82f6;
+}
+
 .connection-status {
   display: flex;
   align-items: center;
@@ -174,6 +185,12 @@
   font-style: italic;
 }
 
+.task-error-text {
+  font-size: 13px;
+  color: #ef4444;
+  font-style: italic;
+}
+
 .task-result-summary {
   font-size: 13px;
   color: #6b7280;
@@ -212,6 +229,21 @@
 
 .plan-item.completed .task-description {
   color: #10b981;
+}
+
+/* Error task styles */
+.plan-item.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.task-icon.error {
+  color: #ffffff;
+  background-color: #ef4444;
+}
+
+.plan-item.error .task-description {
+  color: #ef4444;
 }
 
 @keyframes spin {

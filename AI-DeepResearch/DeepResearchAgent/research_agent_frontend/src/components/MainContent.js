@@ -10,7 +10,7 @@ import { FiSun, FiSearch, FiBook, FiDatabase } from 'react-icons/fi';
 import { useResearch } from '../contexts/ResearchContext';
 
 const MainContent = () => {
-  const { status, report } = useResearch();
+  const { status, report, error } = useResearch();
 
   // Suggestions for initial state
   const suggestions = [
@@ -48,14 +48,21 @@ const MainContent = () => {
     <main className="main-content">
       <SearchBar />
       
+      {/* Always show JobStatusDisplay to ensure errors are visible */}
       <JobStatusDisplay />
       
-      <PlanDisplay />
+      {/* Only show PlanDisplay when in active states */}
+      {(status === 'researching' || status === 'loading' || status === 'completed' || status === 'failed') && (
+        <PlanDisplay />
+      )}
       
-      <ReportDisplay />
+      {/* Show report when there's content or when in appropriate states */}
+      {(report || status === 'researching' || status === 'completed') && (
+        <ReportDisplay />
+      )}
 
-      {/* Show suggestions only in idle state */}
-      {status === 'idle' && !report && (
+      {/* Show suggestions only in idle state and when no error */}
+      {status === 'idle' && !error && !report && (
         <div className="suggestions-area">
           <div className="info-banner">
             <img

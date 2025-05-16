@@ -8,14 +8,17 @@ const API_BASE_URL = 'http://localhost:8000';
 /**
  * Start a new research job
  * @param {string} query - The research query
+ * @param {string} clientId - Unique client identifier
  * @returns {Promise<Object>} - The response containing job_id and plan
  */
-export const startResearchJob = async (query) => {
+export const startResearchJob = async (query, clientId) => {
   try {
+    console.log(`Starting research job with query: "${query}" and client ID: ${clientId}`);
     const response = await fetch(`${API_BASE_URL}/start_job`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Client-ID': clientId, // Send client ID in header to match WebSocket connection
       },
       body: JSON.stringify({ query }),
     });
@@ -37,9 +40,10 @@ export const startResearchJob = async (query) => {
  * @param {string} clientId - Unique client identifier
  * @param {Function} onMessage - Callback function for handling messages
  * @param {Function} onReconnect - Optional callback when reconnection happens
+ * @param {Function} onConnectionStatus - Optional callback for connection status updates
  * @returns {Object} - WebSocket connection with additional control methods
  */
-export const createWebSocketConnection = (clientId, onMessage, onReconnect) => {
+export const createWebSocketConnection = (clientId, onMessage, onReconnect, onConnectionStatus) => {
   let ws = null;
   let reconnectAttempts = 0;
   let scheduledReconnectTimer = null; 
@@ -110,6 +114,10 @@ export const createWebSocketConnection = (clientId, onMessage, onReconnect) => {
       console.log('WebSocket connection established');
       isConnecting = false;
       reconnectAttempts = 0; 
+      // Notify about connection status
+      if (onConnectionStatus && typeof onConnectionStatus === 'function') {
+        onConnectionStatus(true);
+      }
     };
     
     ws.onmessage = (event) => {
@@ -118,7 +126,8 @@ export const createWebSocketConnection = (clientId, onMessage, onReconnect) => {
         console.log('Raw WebSocket message received:', rawData.substring(0, 200) + '...');
         
         const data = JSON.parse(rawData);
-        console.log('Parsed WebSocket message:', data.type);
+        console.log('Parsed WebSocket message type:', data.type);
+        console.log('Parsed WebSocket message structure:', JSON.stringify(data, null, 2));
         
         if (onMessage && typeof onMessage === 'function') {
           onMessage(data);
@@ -138,6 +147,11 @@ export const createWebSocketConnection = (clientId, onMessage, onReconnect) => {
     ws.onclose = (event) => {
       console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
       isConnecting = false; 
+      
+      // Notify about connection status
+      if (onConnectionStatus && typeof onConnectionStatus === 'function') {
+        onConnectionStatus(false);
+      }
 
       if (event.code !== 1000) {
         console.log("Connection closed unexpectedly. Scheduling reconnect.");

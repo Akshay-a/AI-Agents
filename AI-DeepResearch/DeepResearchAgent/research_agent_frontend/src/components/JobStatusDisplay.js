@@ -6,12 +6,22 @@ import { FiLoader, FiAlertCircle } from 'react-icons/fi';
 const JobStatusDisplay = () => {
   const { status, error } = useResearch();
 
-  // Don't render if status is idle
-  if (status === 'idle') {
+  // Don't render if status is idle and no error
+  if (status === 'idle' && !error) {
     return null;
   }
 
-  // Determine status message and icon
+  // If there's an error, always show it regardless of status
+  if (error) {
+    return (
+      <div className="status-container failed">
+        <FiAlertCircle className="status-icon" />
+        <span className="status-message">{error}</span>
+      </div>
+    );
+  }
+
+  // Determine status message and icon for non-error states
   let statusMessage = '';
   let statusClass = '';
   let StatusIcon = null;
@@ -30,7 +40,7 @@ const JobStatusDisplay = () => {
     case 'completed':
       return null; // Don't show status when completed, as the report will be displayed
     case 'failed':
-      statusMessage = error || 'Research failed. Please try again.';
+      statusMessage = 'Research failed. Please try again.';
       statusClass = 'failed';
       StatusIcon = FiAlertCircle;
       break;
