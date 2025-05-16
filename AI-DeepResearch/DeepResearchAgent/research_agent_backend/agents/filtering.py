@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import random
@@ -49,7 +48,8 @@ class FilteringAgent:
                 else:
                     logger.warning(f"[Job {job_id} | Task {current_task_id}] Expected list result from task {search_task_id}, got {type(result)}. Skipping.")
             else:
-                logger.warning(f"[Job {job_id} | Task {current_task_id}] No result found for search task {search_task_id}. It might have failed or been skipped.")
+                #below can be changed back to warning
+                logger.error(f"[Job {job_id} | Task {current_task_id}] No result found for search task {search_task_id}. It might have failed or been skipped.")
 
         if not raw_results_list:
             logger.warning(f"[Job {job_id} | Task {current_task_id}] Filtering Agent: No valid search results found from preceding tasks.")
@@ -73,12 +73,6 @@ class FilteringAgent:
         filtered_results = list(unique_results_map.values())
         duplicates_removed = len(raw_results_list) - len(filtered_results)
 
-        # 3. Simulate Potential Failure (Optional)
-        if random.random() < 0.05: # 5% chance of failure
-            error_msg = "Simulated filtering process error."
-            logger.error(f"[Job {job_id} | Task {current_task_id}] Filtering Agent: {error_msg}")
-            raise RuntimeError(error_msg)
-
         logger.info(f"[Job {job_id} | Task {current_task_id}] Filtering complete. Kept {len(filtered_results)} unique results based on URL, removed {duplicates_removed} potential duplicates.")
 
         # 4. Store Filtered Results
@@ -87,7 +81,7 @@ class FilteringAgent:
     async def _store_filtered_results(self, task_id: str, results: List[Dict[str, Any]], duplicates: int, sources_count: int):
         """Stores the filtered results and metadata in the TaskManager."""
         if not self.task_manager:
-             # This case should ideally be caught earlier, but double-check
+             # This case should ideally be caught earlier
              logger.critical(f"Cannot store filtered results for {task_id}: TaskManager unavailable.")
              return
 
@@ -100,6 +94,4 @@ class FilteringAgent:
         logger.info(f"Stored filtered results for task {task_id}.")
 
 # Instantiate the agent - Orchestrator should pass the task_manager instance
-filtering_agent = FilteringAgent() # Orchestrator will set task_manager if needed, or pass it in run
-# Modify Orchestrator to pass task_manager to filtering_agent.run or ensure it's set at init.
-# Let's stick to initializing it in the orchestrator like SearchAgent for consistency.
+filtering_agent = FilteringAgent() 

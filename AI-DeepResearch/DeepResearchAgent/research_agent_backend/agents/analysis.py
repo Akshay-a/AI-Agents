@@ -31,12 +31,12 @@ class AnalysisAgent:
         # self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2') # Example
         logger.info(f"AnalysisAgent initialized. Max context tokens for synthesis: {MAX_CONTEXT_TOKENS}")
 
-    async def run(self, topic: str, filter_task_id: str, current_task_id: str, job_id: str) -> None:
+    async def run(self, topic: str, filter_result: Dict[str, Any], current_task_id: str, job_id: str) -> None:
         """Main entry point for the analysis agent."""
         logger.info(f"[Job {job_id} | Task {current_task_id}] Analysis Agent: Starting context-maximized analysis for topic '{topic}'")
 
-        # 1. Get Filtered Documents
-        documents = self._get_filtered_documents(filter_task_id, job_id, current_task_id)
+        # 1. Get Filtered Documents directly from the provided filter_result
+        documents = self._get_documents_from_filter_result(filter_result, job_id, current_task_id)
         if not documents: return # Error handled in getter
 
         # 2. Filter & Prioritize
@@ -56,8 +56,24 @@ class AnalysisAgent:
             await self.task_manager.store_result(current_task_id, {"error": f"Report synthesis failed: {e}"})
             raise # Re-raise for orchestrator to catch
 
+    def _get_documents_from_filter_result(self, filter_result: Dict[str, Any], job_id: str, current_task_id: str) -> List[Dict[str, Any]]:
+        """Retrieves and validates documents from the filter result."""
+        if not filter_result or not isinstance(filter_result, dict):
+            logger.error(f"[Job {job_id} | Task {current_task_id}] Invalid filter result provided - not a dictionary.")
+            raise ValueError("Filtering step did not produce valid results.")
+
+        documents: List[Dict[str, Any]] = filter_result.get("filtered_results", [])
+        if not documents:
+            logger.warning(f"[Job {job_id} | Task {current_task_id}] No documents found in filter result.")
+            # Store empty report? Or let run() handle it? Let run() handle.
+            return []
+
+        logger.info(f"[Job {job_id} | Task {current_task_id}] Retrieved {len(documents)} documents from filter result.")
+        return documents
+
     def _get_filtered_documents(self, filter_task_id: str, job_id: str, current_task_id: str) -> List[Dict[str, Any]]:
-        """Retrieves and validates documents from the filter task result."""
+        """[DEPRECATED] Retrieves and validates documents from the filter task result."""
+        logger.warning(f"[Job {job_id} | Task {current_task_id}] Using deprecated _get_filtered_documents method.")
         filtered_result = self.task_manager.get_result(filter_task_id)
         if not filtered_result or not isinstance(filtered_result, dict):
             logger.error(f"[Job {job_id} | Task {current_task_id}] Invalid or missing result from filter task {filter_task_id}.")

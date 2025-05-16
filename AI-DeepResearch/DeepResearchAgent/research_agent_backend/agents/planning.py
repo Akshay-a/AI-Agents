@@ -17,7 +17,7 @@ class PlanningAgent:
     async def generate_plan(self, user_query: str, job_id: str) -> List[Dict[str, Any]]:
         """
         Generates a structured execution plan based on the user query using an LLM.
-
+        #TODO: fine tune prompt
         Returns:
             List[Dict[str, Any]]: A list of task dictionaries, validated.
 
