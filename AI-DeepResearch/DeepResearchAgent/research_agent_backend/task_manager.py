@@ -1,215 +1,196 @@
 import logging
-from typing import Dict, Optional, List, Any
-from models import Task, TaskStatus, StatusUpdate, UserCommand ,TaskType
-from persistence import save_tasks_to_md
-from websocket_manager import ConnectionManager
+import uuid
+from typing import Dict, Any, List, Optional, Set
+from collections import defaultdict
+import asyncio
+import json # For potential result serialization/deserialization if not handled by DB layer
 
-# Avoid direct import of Orchestrator at module level
-# from . import orchestrator 
+from models import Task, TaskStatus, TaskType, TaskInputData
+# Import the Database manager and potentially the models if needed for type hints
+from database_layer.database import Database
 
 logger = logging.getLogger(__name__)
 
 class TaskManager:
-    def __init__(self, connection_manager: ConnectionManager):
-        self.tasks: Dict[str, Task] = {}
-        self.connection_manager = connection_manager
-        self.orchestrator: Optional['Orchestrator'] = None # Type hint without import
-        self.task_results: Dict[str, Any] = {} # Stores results keyed by task_id
-        save_tasks_to_md(self.tasks) # Save initial empty state
-
-    def set_orchestrator(self, orchestrator):
-        from orchestrator import Orchestrator # Import here to avoid circular dependency
-        if not self.orchestrator:
-            self.orchestrator = orchestrator
-        else:
-            logger.warning("Orchestrator reference already set.")
+    """Manages the lifecycle and state of tasks within research jobs using a database."""
+    #This now has been migrated to use DB for persistence across restarts and also to enable viewing history 
+    def __init__(self, database: Database):
+        """Initialize the TaskManager with a database connection manager."""
+        self.db = database
+        # In-memory storage is removed
+        # self.tasks: Dict[str, Task] = {}
+        # self.task_results: Dict[str, Any] = {}
+        # self.job_tasks: Dict[str, List[str]] = defaultdict(list)
+        logger.info("TaskManager initialized with Database instance.")
 
     async def add_task(
         self,
-        description: str,
-        task_type: TaskType,
-        parameters: Optional[Dict[str, Any]] = None,
-        job_id: Optional[str] = None
+        job_id: str,
+        sequence_order: int,
+        task_input: TaskInputData,
     ) -> Task:
-        """Adds a new task ."""
+        """Adds a new task to the database and returns the corresponding Task model."""
+        task_id = str(uuid.uuid4())
         new_task = Task(
-            description=description,
-            task_type=task_type,
-            parameters=parameters if parameters is not None else {}, # Ensure parameters is a dict
-            job_id=job_id
+            task_id=task_id,
+            job_id=job_id,
+            sequence_order=sequence_order,
+            task_type=task_input.task_type,
+            description=task_input.description,
+            parameters=task_input.parameters,
+            status=TaskStatus.PENDING # Ensure it starts as PENDING
+            # created_at and updated_at are handled by default_factory in Task model or DB trigger
         )
-        self.tasks[new_task.id] = new_task
-        logger.info(f"[Job {job_id}] Added Task (ID: {new_task.id}): Type={task_type.value}, Desc='{description}'")
-        save_tasks_to_md(self.tasks) # have to make this async if file I/O becomes slow
 
-        #update_message = StatusUpdate(
-        #    task_id=new_task.id,
-        #    status=new_task.status,
-        #    detail=f"Task '{new_task.description}' ({task_type.value}) created for job {job_id}.",
-        #    job_id=job_id
-        #).dict()
-        ## Ensure job_id is in the broadcast message (redundant with model but safe)
-        #update_message['job_id'] = job_id
-        #await self.connection_manager.broadcast_json(update_message)
-        return new_task
-
-
-    async def add_task_old(self, description: str, job_id: Optional[str] = None) -> Task:
-        new_task = Task(description=description, job_id=job_id)
-        self.tasks[new_task.id] = new_task
-        logger.info(f"[Job {job_id}] Added task: {new_task.description} (ID: {new_task.id})")
-        save_tasks_to_md(self.tasks) # Consider making async
-
-        update_message = StatusUpdate(
-            task_id=new_task.id,
-            status=new_task.status,
-            detail=f"Task '{new_task.description}' created for job {job_id}."
-        ).dict()
-        update_message['job_id'] = job_id
-        await self.connection_manager.broadcast_json(update_message)
-        return new_task
+        try:
+            await self.db.create_task(
+                task_id=new_task.task_id,
+                job_id=new_task.job_id,
+                sequence_order=new_task.sequence_order,
+                task_type=new_task.task_type.value, # Pass enum value
+                description=new_task.description,
+                parameters=new_task.parameters # Pass the dict directly, handler serializes
+            )
+            logger.info(f"Added task {new_task.task_id} for job {job_id} to database.")
+            # Return the Pydantic model instance we created
+            return new_task
+        except Exception as e:
+            logger.error(f"Failed to add task {task_id} for job {job_id} to DB: {e}", exc_info=True)
+            # Depending on desired behavior, maybe raise or return None/error indicator
+            raise # Re-raise the exception for the caller (Orchestrator) to handle
 
     async def update_task_status(
         self,
         task_id: str,
         status: TaskStatus,
-        detail: Optional[str] = None,
-        error_message: Optional[str] = None,
-    ):
-        task = self.tasks.get(task_id)
-        if not task:
-            logger.error(f"Task ID {task_id} not found for status update.")
-            return
+        error_message: Optional[str] = None
+    ) -> None:
+        """Updates the status and optionally the error message of a task in the database."""
+        try:
+            await self.db.update_task_status(task_id, status.value, error_message)
+            logger.debug(f"Updated task {task_id} status to {status.value} in database.")
+        except Exception as e:
+            logger.error(f"Failed to update status for task {task_id} in DB: {e}", exc_info=True)
+            raise
 
-        task.status = status
-        task.error_message = error_message if status == TaskStatus.ERROR else None
+    async def store_result(self, task_id: str, result: Any) -> None:
+        """Stores the result of a completed task in the database."""
+        try:
+            # The db handler method should handle JSON serialization
+            await self.db.update_task_result(task_id, result)
+            logger.debug(f"Stored result for task {task_id} in database.")
+        except Exception as e:
+            logger.error(f"Failed to store result for task {task_id} in DB: {e}", exc_info=True)
+            raise
 
-        logger.info(f"[Job {task.job_id}] Updating task {task_id} ({task.description}) to {status}. Detail: {detail}")
-        save_tasks_to_md(self.tasks)
+    async def get_task(self, task_id: str) -> Optional[Task]:
+        """Retrieves a single task from the database by its ID."""
+        try:
+            task_data = await self.db.get_task(task_id)
+            if task_data:
+                # Convert dict from DB back to Pydantic model
+                return Task(**task_data)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to retrieve task {task_id} from DB: {e}", exc_info=True)
+            return None # Or raise?
 
-        ##update_message = StatusUpdate(
-        #    task_id=task_id,
-       ##     status=task.status,
-        #    detail=detail or f"Task status changed to {status}",
-        #    job_id=task.job_id # Include job_id
-       # ).dict()
-        #update_message['job_id'] = task.job_id # Ensure again
-        #await self.connection_manager.broadcast_json(update_message)
-
-
-
-    # --- Result Storage Methods ---
-    async def store_result(self, task_id: str, result: Any):
-        """Stores the result for a given task ID."""
-        if task_id not in self.tasks:
-            logger.error(f"Attempted to store result for non-existent task ID: {task_id}")
-            return
-        task = self.tasks[task_id]
-        self.task_results[task_id] = result
-        logger.info(f"[Job {task.job_id}] Stored result for task {task_id} ({task.description}). Result type: {type(result).__name__}")
-        # Optionally save results to disk or DB here if they are large
-        # save_task_result_to_file(task_id, result)
-
-    def get_result(self, task_id: str) -> Optional[Any]:
-        """Retrieves the stored result for a given task ID."""
-        result = self.task_results.get(task_id)
-        if result is None:
-             logger.warning(f"No result found for task ID: {task_id}")
-        return result
-
-    # --- Existing Methods (Keep as they are) ---
-    def get_task(self, task_id: str) -> Optional[Task]:
-        """Gets a specific task by ID."""
-        return self.tasks.get(task_id)
-
-    def get_all_tasks(self) -> List[Task]:
-        return list(self.tasks.values())
-
-    def get_next_pending_task_for_job(self, job_id: str) -> Optional[Task]:
-        for task in self.tasks.values():
-            if task.job_id == job_id and task.status == TaskStatus.PENDING:
-                return task
+    async def get_result(self, task_id: str) -> Optional[Any]:
+        """Retrieves the result of a specific task from the database."""
+        task = await self.get_task(task_id) # Reuse get_task which handles deserialization
+        if task:
+            return task.result
+        # We could also add a specific db.get_task_result method if results are large
+        # and we want to avoid fetching the full task object.
+        # For now, reusing get_task is simpler.
         return None
 
-    def has_running_tasks(self, job_id: str) -> bool:
-        for task in self.tasks.values():
-            if task.job_id == job_id and task.status == TaskStatus.RUNNING:
-                return True
-        return False
-
-    def has_errored_tasks(self, job_id: str) -> bool:
-        for task in self.tasks.values():
-             if task.job_id == job_id and task.status == TaskStatus.ERROR:
-                 return True
-        return False
-
-    def get_completed_tasks_for_job(self, job_id: str, task_type: Optional[TaskType] = None) -> List[Task]:
-        """Gets completed tasks for a job, optionally filtering by type."""
-        completed = []
-        for task in self.tasks.values():
-            if task.job_id == job_id and task.status == TaskStatus.COMPLETED:
-                if task_type is None or task.task_type == task_type:
-                    logger.info(f"Found completed task {task.id} with type {task.task_type} for job {job_id}")
-                    completed.append(task)
-        return completed
-        
-    def get_completed_task_results_for_job(self, job_id: str, task_type: Optional[TaskType] = None) -> List[Any]:
-        """Gets results of completed tasks for a job, optionally filtering by type."""
-        results = []
-        for task in self.tasks.values():
-            if task.job_id == job_id and task.status == TaskStatus.COMPLETED:
-                if task_type is None or task.task_type == task_type:
-                    if task.id in self.task_results:
-                        logger.info(f"Task {task.id} has task type {task.task_type} and status {task.status} and result is available")
-                        results.append(self.task_results[task.id])
-                    else:
-                        logger.warning(f"Task {task.id} is completed but has no stored result")
-        return results
-
-    async def handle_user_command(self, command_data: dict):
-        """Handles commands like skip/resume, now potentially job-level."""
+    async def get_all_tasks_for_job(self, job_id: str) -> List[Task]:
+        """Retrieves all tasks associated with a job_id from the database, ordered by sequence."""
         try:
-            # Use Pydantic validation
-            command = UserCommand(**command_data)
-            logger.info(f"Processing command: {command.command} (TaskID: {command.task_id}, JobID: {command.job_id})")
-
-            if not self.orchestrator:
-                 logger.error("Orchestrator reference not set in TaskManager. Cannot handle commands.")
-                 # Maybe send feedback to user via websocket?
-                 return
-
-            # Determine target job ID
-            target_job_id = command.job_id
-            if not target_job_id and command.task_id:
-                 task = self.get_task(command.task_id)
-                 if task:
-                     target_job_id = task.job_id
-
-            if not target_job_id:
-                 logger.warning(f"Received command '{command.command}' without sufficient context (JobID or valid TaskID).")
-                 # Send feedback?
-                 return
-
-            # Route command to orchestrator based on target job
-            if command.command == "skip" and command.task_id:
-                 task_to_skip = self.get_task(command.task_id)
-                 if task_to_skip and task_to_skip.job_id == target_job_id:
-                     if task_to_skip.status in [TaskStatus.ERROR, TaskStatus.PENDING, TaskStatus.RUNNING]:
-                         await self.orchestrator.skip_task_and_resume(target_job_id, command.task_id)
-                     else:
-                         logger.warning(f"Cannot skip task {command.task_id} in status {task_to_skip.status}")
-                         # Send feedback?
-                 else:
-                      logger.warning(f"Skip command received for task {command.task_id}, but it doesn't exist or belong to inferred job {target_job_id}.")
-
-            elif command.command == "resume":
-                 # Resume applies at the job level
-                 await self.orchestrator.resume(target_job_id)
-
-            else:
-                logger.warning(f"Unknown command received: {command.command}")
-                # Send feedback?
-
+            tasks_data = await self.db.get_tasks_by_job_id(job_id)
+            # Convert list of dicts from DB to list of Pydantic models
+            return [Task(**task_data) for task_data in tasks_data]
         except Exception as e:
-            logger.error(f"Error processing user command {command_data}: {e}", exc_info=True)
-            # Send error feedback to user?
+            logger.error(f"Failed to retrieve tasks for job {job_id} from DB: {e}", exc_info=True)
+            return [] # Return empty list on error
+
+    async def get_next_pending_task_for_job(self, job_id: str) -> Optional[Task]:
+        """Finds the next task marked as PENDING for a specific job from the database."""
+        try:
+            task_data = await self.db.get_next_pending_task(job_id)
+            if task_data:
+                return Task(**task_data)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get next pending task for job {job_id} from DB: {e}", exc_info=True)
+            return None
+
+    async def get_completed_tasks_for_job(self, job_id: str, task_type: Optional[TaskType] = None) -> List[Task]:
+        """Retrieves all completed tasks for a job, optionally filtered by type."""
+        if task_type:
+            try:
+                tasks_data = await self.db.get_completed_tasks_by_type(job_id, task_type.value)
+                return [Task(**task_data) for task_data in tasks_data]
+            except Exception as e:
+                logger.error(f"Failed to get completed {task_type.value} tasks for job {job_id}: {e}", exc_info=True)
+                return []
+        else:
+            # If no type specified, get all completed tasks (needs a new DB method or filter here)
+            # Option 1: Add db.get_completed_tasks(job_id)
+            # Option 2: Filter results from get_all_tasks_for_job (potentially inefficient)
+            # Let's assume we need all completed for now, so filter results of get_all_tasks:
+            try:
+                all_tasks = await self.get_all_tasks_for_job(job_id)
+                return [task for task in all_tasks if task.status == TaskStatus.COMPLETED]
+            except Exception as e:
+                logger.error(f"Failed to get all completed tasks for job {job_id}: {e}", exc_info=True)
+                return []
+
+    async def has_running_tasks(self, job_id: str) -> bool:
+        """Checks if there are any tasks currently RUNNING for the job in the database."""
+        try:
+            count = await self.db.count_tasks_by_status(job_id, TaskStatus.RUNNING.value)
+            return count > 0
+        except Exception as e:
+            logger.error(f"Failed to count running tasks for job {job_id}: {e}", exc_info=True)
+            return False # Assume no running tasks on error
+
+    async def has_errored_tasks(self, job_id: str) -> bool:
+        """Checks if any task associated with the job has ERRORED in the database."""
+        try:
+            count = await self.db.count_tasks_by_status(job_id, TaskStatus.ERROR.value)
+            return count > 0
+        except Exception as e:
+            logger.error(f"Failed to count errored tasks for job {job_id}: {e}", exc_info=True)
+            return False # Assume no errored tasks on error
+
+    # --- Methods below might be obsolete or need rethinking with DB backend ---
+
+    # def get_job_id_for_task(self, task_id: str) -> Optional[str]:
+    #     """Finds the job ID associated with a given task ID."""
+    #     # This would require fetching the task from DB
+    #     task = asyncio.run(self.get_task(task_id)) # Careful with running async like this
+    #     return task.job_id if task else None
+
+    # def is_job_complete(self, job_id: str) -> bool:
+    #     """Checks if all tasks for a given job ID are in a terminal state (COMPLETED, ERROR, SKIPPED)."""
+    #     # Need to fetch all tasks for the job from DB
+    #     tasks = asyncio.run(self.get_all_tasks_for_job(job_id))
+    #     if not tasks:
+    #         logger.warning(f"No tasks found for job {job_id} when checking completion.")
+    #         return False # Or True if no tasks means complete?
+    #     return all(task.status in [TaskStatus.COMPLETED, TaskStatus.ERROR, TaskStatus.SKIPPED] for task in tasks)
+
+    # def get_final_report_task(self, job_id: str) -> Optional[Task]:
+    #     """Finds the final REPORT task for a job."""
+    #     # Need to fetch tasks from DB
+    #     report_tasks = asyncio.run(self.get_completed_tasks_for_job(job_id, TaskType.REPORT))
+    #     if report_tasks:
+    #         return report_tasks[-1] # Assume last one if multiple?
+    #     return None
+
+# Note: Removed methods relying on internal state (job_tasks, etc.)
+# and commented out methods that would require synchronous DB calls within async methods
+# or need to be reimplemented carefully using the async db methods.
+# The Orchestrator will likely handle job completion logic based on task statuses from DB.
