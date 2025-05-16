@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 import logging
 
-from research_agent_backend.database_layer.base_db_handler import BaseDBHandler
+from database_layer.base_db_handler import BaseDBHandler
 
 # Set up logger
 logger = logging.getLogger(__name__)
