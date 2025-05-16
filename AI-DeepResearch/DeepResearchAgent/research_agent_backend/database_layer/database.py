@@ -5,294 +5,167 @@ import logging
 import aiosqlite
 from typing import Dict, Optional, Any, List, Union
 from contextlib import asynccontextmanager
+from pathlib import Path
+import asyncio
+from fastapi import Request # To potentially get access to run_in_threadpool
 
-from database_layer.base_db_handler import BaseDBHandler
+from .sqlite_handler import SqliteHandler # Use the modified synchronous handler
+from .base_db_handler import BaseDBHandler
+from config import settings # Assuming settings has DB_PATH
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = "research_agent.db"
-SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+SCHEMA_PATH = Path(__file__).parent / "schema.sql" #removed the hardcoded path to make it reusable across other system deployments
 
-class Database(BaseDBHandler):
-    """
-    Implementation of the database handler interface using SQLite.
-    Uses aiosqlite for async database operations.
-    """
-    
-    def __init__(self, connection_string: str):
-        
-        # Extract file path from the connection string
-        if connection_string.startswith('sqlite:///'):
-            self.db_path = connection_string.replace('sqlite:///', '')
-        elif connection_string.startswith('sqlite+aiosqlite:///'):
-            self.db_path = connection_string.replace('sqlite+aiosqlite:///', '')
-        else:
-            self.db_path = connection_string
-            
-        
-        db_dir = os.path.dirname(os.path.abspath(self.db_path))
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir, exist_ok=True)
-            logger.info(f"Created database directory: {db_dir}")
-            
-        self.connection = None
-        logger.info(f"Database initialized with path: {self.db_path}")
-    
-    async def connect(self) -> None:
-        """Establish a connection to the database."""
+class Database:
+    """Manages database connections and initialization."""
+
+    _instance: Optional['Database'] = None
+    _lock = asyncio.Lock()
+
+    def __init__(self, db_path: str):
+        if not hasattr(self, 'initialized'): # Prevent re-initialization
+            self.db_path = db_path
+            # Use the synchronous SqliteHandler
+            self.handler: BaseDBHandler = SqliteHandler(db_path)
+            self.initialized = False # Use a flag to track initialization
+            logger.info(f"Database instance created with path: {db_path}")
+
+    # Making __new__ async is tricky, using an async factory method instead
+    @classmethod
+    async def get_instance(cls, db_path: Optional[str] = None) -> 'Database':
+        """Gets the singleton Database instance, initializing it asynchronously if needed."""
+        if cls._instance is None:
+            async with cls._lock:
+                # Double-check locking
+                if cls._instance is None:
+                    if db_path is None:
+                        # Use path from settings if not provided
+                        db_path = settings.DB_PATH
+                        logger.info(f"Database path not provided, using settings: {db_path}")
+                    if not db_path:
+                        raise ValueError("Database path must be provided either directly or via settings.")
+
+                    cls._instance = cls(db_path)
+                    # Initialization needs to be awaited
+                    await cls._instance._initialize_database()
+        elif not cls._instance.initialized:
+             async with cls._lock: # Ensure initialization completes if accessed concurrently
+                 if not cls._instance.initialized:
+                      await cls._instance._initialize_database()
+
+        return cls._instance
+
+    async def _initialize_database(self):
+        """Initializes the database by applying the schema if necessary."""
+        if self.initialized:
+            logger.debug("Database already initialized.")
+            return
+
         try:
-            self.connection = await aiosqlite.connect(self.db_path)
-            # Enable foreign keys
-            await self.connection.execute("PRAGMA foreign_keys = ON")
-            # Use Row factory to get column names in results
-            self.connection.row_factory = aiosqlite.Row
-            logger.info(f"Database connection established to {self.db_path}")
-        except Exception as e:
-            logger.error(f"Error connecting to database {self.db_path}: {e}")
-            raise
-    
-    async def disconnect(self) -> None:
-        if self.connection:
-            await self.connection.close()
-            self.connection = None
-            logger.info("Database connection closed.")
-    
-    async def initialize_schema(self) -> None:
-        if not self.connection:
-            await self.connect()
-        
-        try:
-            # Read schema from SQL file
+            # Load schema SQL
+            if not SCHEMA_PATH.is_file():
+                logger.error(f"Schema file not found at {SCHEMA_PATH}")
+                raise FileNotFoundError(f"Schema file not found at {SCHEMA_PATH}")
+
             with open(SCHEMA_PATH, 'r') as f:
                 schema_sql = f.read()
-                
-            # Execute schema creation script
-            await self.connection.executescript(schema_sql)
-            await self.connection.commit()
-            logger.info(f"Database schema initialized successfully from {SCHEMA_PATH}.")
+
+            # Apply schema using the handler (synchronous call wrapped in threadpool)
+            # Note: Applying schema is typically a startup operation, so blocking might be acceptable,
+            # but using threadpool is safer if this runs concurrently with other async tasks.
+            # We need access to run_in_threadpool, which is usually via FastAPI request or asyncio.to_thread
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.handler.apply_schema, schema_sql)
+            # Alternative using asyncio.to_thread (Python 3.9+)
+            # await asyncio.to_thread(self.handler.apply_schema, schema_sql)
+
+            self.initialized = True
+            logger.info("Database initialization completed successfully.")
+
         except Exception as e:
-            logger.error(f"Error initializing database schema: {e}")
+            logger.error(f"Failed to initialize database: {e}", exc_info=True)
+            # Reset instance if initialization failed to allow retry?
+            # Database._instance = None # Or handle differently
             raise
-    
-    async def get_job_by_id(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve a job by its ID.
-        
-        Args:
-            job_id: The unique identifier of the job
-            
-        Returns:
-            The job data as a dictionary, or None if not found
-        """
-        if not self.connection:
-            await self.connect()
-            
-        async with self.connection.execute(
-            "SELECT * FROM jobs WHERE id = ?", (job_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if row:
-                return dict(row)
-            return None
-    
-    async def create_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create a new job in the database.
-        
-        Args:
-            job_data: A dictionary containing the job data
-            
-        Returns:
-            The created job data including any generated IDs
-        """
-        if not self.connection:
-            await self.connect()
-            
-        # Generate a UUID if not provided
-        if 'id' not in job_data:
-            job_data['id'] = str(uuid.uuid4())
-            
-        # Set default status if not provided
-        if 'status' not in job_data:
-            job_data['status'] = 'PENDING'
-            
-        # Extract fields
-        job_id = job_data['id']
-        user_query = job_data['user_query']
-        status = job_data['status']
-        report_path = job_data.get('report_path')
-        
-        # Insert the job
-        await self.connection.execute(
-            """
-            INSERT INTO jobs (id, user_query, status, final_report_path)
-            VALUES (?, ?, ?, ?)
-            """,
-            (job_id, user_query, status, report_path)
-        )
-        await self.connection.commit()
-        
-        # Return the created job
-        return await self.get_job_by_id(job_id)
-    
-    async def update_job_status(self, job_id: str, status: str) -> bool:
-        """
-        Update the status of a job.
-        
-        Args:
-            job_id: The unique identifier of the job
-            status: The new status value
-            
-        Returns:
-            True if the update was successful, False otherwise
-        """
-        if not self.connection:
-            await self.connect()
-            
-        try:
-            await self.connection.execute(
-                """
-                UPDATE jobs 
-                SET status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (status, job_id)
-            )
-            await self.connection.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Error updating job status: {e}")
-            return False
-    
-    async def get_task_by_id(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve a task by its ID.
-        
-        Args:
-            task_id: The unique identifier of the task
-            
-        Returns:
-            The task data as a dictionary, or None if not found
-        """
-        if not self.connection:
-            await self.connect()
-            
-        async with self.connection.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if row:
-                task_dict = dict(row)
-                # Parse JSON fields
-                if task_dict.get('parameters'):
-                    task_dict['parameters'] = json.loads(task_dict['parameters'])
-                if task_dict.get('result'):
-                    task_dict['result'] = json.loads(task_dict['result'])
-                return task_dict
-            return None
-    
-    async def create_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create a new task in the database.
-        
-        Args:
-            task_data: A dictionary containing the task data
-            
-        Returns:
-            The created task data including any generated IDs
-        """
-        if not self.connection:
-            await self.connect()
-            
-        # Generate a UUID if not provided
-        if 'id' not in task_data:
-            task_data['id'] = str(uuid.uuid4())
-            
-        # Set default status if not provided
-        if 'status' not in task_data:
-            task_data['status'] = 'PENDING'
-            
-        # Extract fields
-        task_id = task_data['id']
-        job_id = task_data['job_id']
-        task_type = task_data['task_type']
-        description = task_data['description']
-        status = task_data['status']
-        sequence_order = task_data.get('sequence_order', 0)
-        
-        # Serialize JSON fields
-        parameters = json.dumps(task_data.get('parameters', {})) if task_data.get('parameters') else None
-        
-        # Insert the task
-        await self.connection.execute(
-            """
-            INSERT INTO tasks (id, job_id, task_type, description, parameters, status, sequence_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (task_id, job_id, task_type, description, parameters, status, sequence_order)
-        )
-        await self.connection.commit()
-        
-        # Return the created task
-        return await self.get_task_by_id(task_id)
-    
-    async def update_task_status(self, task_id: str, status: str, result: Optional[Any] = None) -> bool:
-        """
-        Update the status and optionally the result of a task.
-        
-        Args:
-            task_id: The unique identifier of the task
-            status: The new status value
-            result: Optional result data for completed tasks
-            
-        Returns:
-            True if the update was successful, False otherwise
-        """
-        if not self.connection:
-            await self.connect()
-            
-        try:
-            # Serialize result if provided
-            result_json = json.dumps(result) if result is not None else None
-            
-            await self.connection.execute(
-                """
-                UPDATE tasks 
-                SET status = ?, result = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (status, result_json, task_id)
-            )
-            await self.connection.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Error updating task status: {e}")
-            return False
-    
-    async def get_tasks_by_job_id(self, job_id: str) -> List[Dict[str, Any]]:
-        """
-        Retrieve all tasks associated with a job.
-        
-        Args:
-            job_id: The unique identifier of the job
-            
-        Returns:
-            A list of task dictionaries
-        """
-        if not self.connection:
-            await self.connect()
-            
-        tasks = []
-        async with self.connection.execute(
-            "SELECT * FROM tasks WHERE job_id = ? ORDER BY sequence_order ASC", (job_id,)
-        ) as cursor:
-            async for row in cursor:
-                task_dict = dict(row)
-                # Parse JSON fields
-                if task_dict.get('parameters'):
-                    task_dict['parameters'] = json.loads(task_dict['parameters'])
-                if task_dict.get('result'):
-                    task_dict['result'] = json.loads(task_dict['result'])
-                tasks.append(task_dict)
-                
-        return tasks 
+
+    async def close(self):
+        """Closes the database connection (delegates to handler, wrapped)."""
+        if self.handler and hasattr(self.handler, 'close_connection'):
+            logger.info("Closing database connection...")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.handler.close_connection)
+            # await asyncio.to_thread(self.handler.close_connection)
+            logger.info("Database connection closed.")
+        self.initialized = False # Mark as not initialized after closing
+
+    # --- Convenience methods to access handler (wrapped for async safety) ---
+    # These methods demonstrate how to call the synchronous handler methods from async code
+
+    async def execute_query(self, query: str, params: tuple = (), commit: bool = False):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.execute_query, query, params, commit)
+
+    async def fetch_one(self, query: str, params: tuple = ()):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.fetch_one, query, params)
+
+    async def fetch_all(self, query: str, params: tuple = ()):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.fetch_all, query, params)
+
+    # --- Job Operations (Async Wrappers) ---
+    async def create_job(self, job_id: str, user_query: str):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.create_job, job_id, user_query)
+
+    async def update_job_status(self, job_id: str, status: str, detail: Optional[str] = None):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.update_job_status, job_id, status, detail)
+
+    async def update_job_report_path(self, job_id: str, report_path: str):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.update_job_report_path, job_id, report_path)
+
+    async def get_job(self, job_id: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_job, job_id)
+
+    async def get_all_jobs(self, limit: int = 100, offset: int = 0):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_all_jobs, limit, offset)
+
+    # --- Task Operations (Async Wrappers) ---
+    async def create_task(self, task_id: str, job_id: str, sequence_order: int, task_type: str, description: str, parameters: Optional[Dict[str, Any]]):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.create_task, task_id, job_id, sequence_order, task_type, description, parameters)
+
+    async def update_task_status(self, task_id: str, status: str, error_message: Optional[str] = None):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.update_task_status, task_id, status, error_message)
+
+    async def update_task_result(self, task_id: str, result: Any):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.handler.update_task_result, task_id, result)
+
+    async def get_task(self, task_id: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_task, task_id)
+
+    async def get_tasks_by_job_id(self, job_id: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_tasks_by_job_id, job_id)
+
+    async def get_next_pending_task(self, job_id: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_next_pending_task, job_id)
+
+    async def get_completed_tasks_by_type(self, job_id: str, task_type: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.get_completed_tasks_by_type, job_id, task_type)
+
+    async def count_tasks_by_status(self, job_id: str, status: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.handler.count_tasks_by_status, job_id, status)
+
