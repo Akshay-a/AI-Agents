@@ -3,6 +3,12 @@ from typing import List, Dict
 from models import Task, TaskStatus
 import os # Import os module
 import json
+
+# Funcionts are no longer used for tracking coz of the
+# database integration that is done to remember restarts. Task state is now managed in the database.
+# The functions here can be kept for potential future use (e.g., generating
+# a markdown report FROM the database for quick inspection) or removed entirely.
+
 logger = logging.getLogger(__name__)
 TODO_FILENAME = "todo.md"
 
@@ -20,54 +26,70 @@ def get_status_marker(status: TaskStatus) -> str:
     return "[?]"
 
 def save_tasks_to_md(tasks: Dict[str, Task]):
-    """Saves the current state of tasks to todo.md, including type and parameters"""
-    try:
-        os.makedirs(os.path.dirname(TODO_FILENAME) or '.', exist_ok=True)
+    """
+    (Obsolete for State Tracking) Saves the current state of tasks to a Markdown file.
+    This function no longer represents the source of truth.
+    It could be adapted to read from the database if this file format is still desired.
+    """
+    logger.warning(f"save_tasks_to_md called, but {TODO_FILENAME} is no longer the source of truth for task state.")
+    # If you still want to generate this file from the current in-memory view (which might be stale or incomplete):
+    # try:
+    #     # Group tasks by job_id for better organization
+    #     tasks_by_job = {}
+    #     for task_id, task in tasks.items():
+    #         job_id = task.job_id or "UNKNOWN_JOB"
+    #         if job_id not in tasks_by_job:
+    #             tasks_by_job[job_id] = []
+    #         tasks_by_job[job_id].append(task)
 
-        tasks_by_job: Dict[str, List[Task]] = {}
-        for task in tasks.values():
-             job_key = task.job_id or "Unassigned"
-             if job_key not in tasks_by_job:
-                 tasks_by_job[job_key] = []
-             tasks_by_job[job_key].append(task)
+    #     with open(TODO_FILENAME, "w", encoding="utf-8") as f:
+    #         f.write("# Research Agent Tasks (Snapshot - Not Source of Truth)\n\n")
+    #         f.write("**Note:** Task state is now managed in the database. This file is a snapshot only.\n\n")
+            
+    #         if not tasks_by_job:
+    #             f.write("*No tasks found in this snapshot.*\n")
+    #             return
 
-        with open(TODO_FILENAME, "w", encoding="utf-8") as f:
-            f.write("# Research Task Todo List\n\n")
-            if not tasks:
-                f.write("No tasks defined yet.\n")
-                return
+    #         for job_id, job_tasks in sorted(tasks_by_job.items()):
+    #             f.write(f"## Job: {job_id}\n\n")
+    #             # Sort tasks within a job (e.g., by creation time or sequence if available)
+    #             # Sorting requires tasks to have comparable attributes.
+    #             # Simple sort by ID for now if sequence_order isn't readily available here.
+    #             sorted_tasks = sorted(job_tasks, key=lambda t: t.task_id)
 
-            sorted_job_ids = sorted(tasks_by_job.keys())
+    #             for task in sorted_tasks:
+    #                 status_icon = " "
+    #                 if task.status == TaskStatus.COMPLETED:
+    #                     status_icon = "x"
+    #                 elif task.status == TaskStatus.ERROR:
+    #                     status_icon = "!"
+    #                 elif task.status == TaskStatus.SKIPPED:
+    #                     status_icon = "~"
+    #                 elif task.status == TaskStatus.RUNNING:
+    #                     status_icon = ">"
+                        
+    #                 f.write(f"- [{status_icon}] **{task.task_type.value}:** {task.description} `(ID: {task.task_id})`")
+    #                 if task.status == TaskStatus.ERROR and task.error_message:
+    #                     f.write(f" - **Error:** {task.error_message}")
+    #                 f.write("\n")
+    #             f.write("\n")
+        
+    #     logger.debug(f"Snapshot of tasks saved to {TODO_FILENAME} (Not source of truth). Note: This may not reflect DB state.")
 
-            for job_id in sorted_job_ids:
-                f.write(f"## Job ID: {job_id}\n\n")
-                job_tasks = tasks_by_job[job_id]
-                sorted_tasks = job_tasks # Keep original order for now
+    # except IOError as e:
+    #     logger.error(f"Error saving tasks snapshot to {TODO_FILENAME}: {e}")
+    # except Exception as e:
+    #      logger.exception(f"An unexpected error occurred while saving tasks snapshot to {TODO_FILENAME}: {e}")
+    pass # Do nothing by default now
 
-                for task in sorted_tasks:
-                    marker = get_status_marker(task.status)
-                    # --- UPDATED Line to include TaskType ---
-                    f.write(f"- {marker} **{task.task_type.value}**: {task.description} `(TaskID: {task.id})`\n")
-                    # --- Optionally display parameters ---
-                    if task.parameters:
-                         try:
-                             # Format parameters as compact JSON for readability
-                             params_str = json.dumps(task.parameters, separators=(',', ':'))
-                             f.write(f"  - Params: `{params_str}`\n")
-                         except TypeError:
-                              f.write(f"  - Params: (Error formatting parameters)\n")
+def load_tasks_from_md() -> Dict[str, Task]:
+    """
+    (Obsolete) Loads tasks from a Markdown file. 
+    This should not be used as the database is the source of truth.
+    """
+    logger.error(f"load_tasks_from_md called, but {TODO_FILENAME} is obsolete. Database is the source of truth.")
+    # Returning empty dict as loading from this file is no longer valid.
+    return {}
 
-                    # --- Display Error/Result (keep as before, but results are less likely in Task object now) ---
-                    if task.status == TaskStatus.ERROR and task.error_message:
-                        f.write(f"  - **Error:** {task.error_message}\n")
-                    # Result is now stored separately, maybe add note if result exists in task_manager?
-                    # elif task.status == TaskStatus.COMPLETED:
-                    #      f.write(f"  - (Result stored separately)\n")
-                f.write("\n")
-
-        logger.info(f"Successfully saved {len(tasks)} tasks across {len(tasks_by_job)} jobs to {TODO_FILENAME}")
-
-    except IOError as e:
-        logger.error(f"Failed to save tasks to {TODO_FILENAME}: {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred while saving tasks: {e}", exc_info=True)
+# Consider removing this file entirely or adapting save_tasks_to_md
+# to query the database and generate the report if needed.
