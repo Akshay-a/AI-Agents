@@ -1,11 +1,12 @@
-import os
 import asyncio
+import os
 import logging
 from typing import Dict, Optional, List, Any, Callable ,Awaitable, Tuple
 from enum import Enum
 import uuid
 import json
-from models import Task, TaskStatus , JobResultsSummary , FinalReportMessage, TaskType, TaskSuccessMessage, JobFailedMessage
+from models import Task, TaskStatus , JobResultsSummary , FinalReportMessage, TaskType, TaskSuccessMessage, JobFailedMessage, JobProgressMessage, \
+    TaskFailedMessage, TaskInputData
 from task_manager import TaskManager # Assuming TaskManager handles status updates/broadcasts
 from agents.planning import PlanningAgent # Import agent instances
 from agents.search import SearchAgent
@@ -13,6 +14,11 @@ from agents.filtering import FilteringAgent
 from agents.analysis import AnalysisAgent
 from agents.reasoning import ReasoningAgent
 from llm_providers import get_provider, BaseLLMProvider
+from datetime import datetime, timezone
+from pathlib import Path
+from config import settings
+from websocket_manager import ConnectionManager
+from database_layer.database import Database
 
 logger = logging.getLogger(__name__)
 OUTPUT_DIR = "D:\\Projects\\AI-Agents\\AI-DeepResearch\\DeepResearchAgent\\research_agent_backend\\LLM_outputs\\" 
@@ -26,9 +32,10 @@ class JobStatus(str, Enum): # This Enum is heart of managing all the jobs and th
     FAILED = "FAILED" # Failed definitively
 
 class Orchestrator:
-    def __init__(self, task_manager: TaskManager):
+    def __init__(self, task_manager: TaskManager, websocket_manager: ConnectionManager, database: Database, prompt_library_path: Optional[str] = None):
         self.task_manager = task_manager
-        # Track running/paused jobs. Key: job_id (initial task ID), Value: Status/Event
+        self.websocket_manager = websocket_manager
+        self.db = database
         self.active_jobs: Dict[str, JobStatus] = {}
         self.pause_events: Dict[str, asyncio.Event] = {}
         self.job_tasks: Dict[str, asyncio.Task] = {} # To manage background tasks -> start with researching about task (that is the first task)
@@ -62,403 +69,436 @@ class Orchestrator:
         if self.analysis_agent:
             self.agent_dispatch[TaskType.SYNTHESIZE] = self._run_analysis_agent 
         # PLAN and REPORT are handled differently (PLAN in start_job, REPORT is often implicit)
-        self.agent_dispatch[TaskType.REPORT] = self._run_report_task # Placeholder report task
+        #self.agent_dispatch[TaskType.REPORT] = self._run_report_task # Placeholder report task
 
         logger.info(f"Agent dispatch map configured: {list(self.agent_dispatch.keys())}")
+
+        # Initialize prompt library
+        #if prompt_library_path is None:
+        #    prompt_library_path = str(Path(__file__).parent / "llm_providers" / "prompts.json")
+        #self.prompt_library = PromptLibrary(file_path=prompt_library_path)
     
-    async def start_job(self, user_query: str):
-        """Initiates a job by calling the Planning Agent."""
-        logger.info(f"Orchestrator: Received start job request for query: '{user_query[:100]}...'")
-
-        if not self.planning_agent:
-            logger.error("Cannot start job: Planning Agent not initialized (LLM provider likely failed).")
-            # Notify user via websocket?
-            raise RuntimeError("Planning Agent not available.")
-
-        # Use a temporary ID for logging before plan is made
-        temp_job_id = f"planning-{uuid.uuid4()}"
-        initial_task_id = None
-        job_id = None
+    async def start_job(self, user_query: str, client_id: str) -> Tuple[str, List[Task]]:
+        """
+        Starts a new research job: creates a job record, plans tasks, adds them to the DB,
+        and initiates the research flow in the background.
+        Returns the job_id and the list of planned Task objects.
+        """
+        job_id = str(uuid.uuid4())
+        logger.info(f"Starting new job {job_id} for query: '{user_query}' from client {client_id}")
 
         try:
-            # 1. Generate Plan
-            # The plan is now a list of dicts with 'task_type', 'description', 'parameters'
-            planned_tasks_data = await self.planning_agent.generate_plan(user_query, temp_job_id)
+            # 1. Create Job Record in Database
+            await self.db.create_job(job_id=job_id, user_query=user_query)
+            # The create_job in SqliteHandler sets status to RUNNING and timestamps.
+            logger.info(f"Job {job_id} record created in database.")
 
+            # 2. Generate Plan (list of TaskInputData)
+            await self.websocket_manager.send_personal_json(
+                JobProgressMessage(payload={"job_id": job_id, "message": "Generating research plan..."}).dict(),
+                client_id
+            )
+            planned_tasks_data: List[TaskInputData] = await self.planning_agent.generate_plan(user_query, job_id)
+            logger.info(f"***planned tasks are {planned_tasks_data}")
             if not planned_tasks_data:
-                logger.error(f"Planning Agent returned an empty plan for query: {user_query}")
-                raise ValueError("Planning failed: No tasks generated.")
+                logger.warning(f"Job {job_id}: Planning phase did not produce any tasks.")
+                await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Planning failed: No tasks generated.")
+                await self.websocket_manager.send_personal_json(
+                    JobFailedMessage(payload={
+                        "job_id": job_id,
+                        "error": "Planning failed: No tasks were generated for your query."
+                    }).dict(),
+                    client_id
+                )
+                return job_id, []
 
-            # 2. Add Tasks to TaskManager
-            tasks_in_job: List[Task] = []
-            first_task = True
-            for task_data in planned_tasks_data:
-                # Use the ID of the *first* task generated by the planner as the Job ID
-                if first_task:
-                    # Create the first task to establish the job ID
-                    new_task = await self.task_manager.add_task(
-                        description=task_data["description"],
-                        task_type=task_data["task_type"],
-                        parameters=task_data["parameters"],
-                        job_id=None # Set job_id after creation
+            # 3. Add Planned Tasks to TaskManager (and thus Database)
+            created_tasks: List[Task] = []
+            for i, task_input_dict in enumerate(planned_tasks_data):
+                try:
+                    # Convert the dictionary to a TaskInputData object
+                    task_input = TaskInputData(**task_input_dict)
+                    task = await self.task_manager.add_task(
+                        job_id=job_id,
+                        sequence_order=i + 1, # 1-indexed sequence
+                        task_input=task_input
                     )
-                    job_id = new_task.id # Assign Job ID based on the first task
-                    new_task.job_id = job_id # Update the task object
-                    self.task_manager.tasks[job_id] = new_task # Ensure update in manager dict
-                    logger.info(f"Established Job ID {job_id} from first planned task.")
-                    initial_task_id = job_id
-                    tasks_in_job.append(new_task)
-                    first_task = False
-                else:
-                    # Add subsequent tasks with the established job ID
-                    new_task = await self.task_manager.add_task(
-                        description=task_data["description"],
-                        task_type=task_data["task_type"],
-                        parameters=task_data["parameters"],
-                        job_id=job_id # Use the established job ID
+                    created_tasks.append(task)
+                except Exception as e:
+                    logger.error(f"Job {job_id}: Failed to add planned task {task_input_dict} to DB: {e}", exc_info=True)
+                    # If one task fails to be added, we might fail the whole job startup
+                    await self.db.update_job_status(job_id, JobStatus.FAILED.value, f"Failed to add task {task_input.description} to database.")
+                    await self.websocket_manager.send_personal_json(
+                        JobFailedMessage(payload={
+                            "job_id": job_id,
+                            "error": f"Failed to initialize task: {task_input.description}"
+                        }).dict(),
+                        client_id
                     )
-                    tasks_in_job.append(new_task)
+                    return job_id, [] # Return empty list as job setup failed
+            
+            logger.info(f"Job {job_id}: Successfully added {len(created_tasks)} planned tasks to the database.")
 
-            # Ensure all tasks are saved with the correct job ID
-            #save_tasks_to_md(self.task_manager.tasks)
+            # 4. Start _run_research_flow in the background
+            background_task = asyncio.create_task(self._run_research_flow(job_id, user_query, client_id))
+            self.active_jobs[job_id] = JobStatus.RUNNING
+            self.pause_events[job_id] = asyncio.Event() # Initially unset
 
-            # 3. Start Orchestrator Background Task
-            if job_id and initial_task_id: # Check if job was successfully created
-                 if job_id in self.active_jobs:   
-                     logger.warning(f"Job {job_id} is already active (potential race condition?).")
-                     return job_id, planned_tasks_data # Return existing job ID and plan data
-
-                 logger.info(f"Starting background execution for job {job_id}...")
-                 self.active_jobs[job_id] = JobStatus.RUNNING
-                 self.pause_events[job_id] = asyncio.Event() # Initially unset
-
-                 job_task = asyncio.create_task(
-                     self._run_research_flow(job_id),
-                     name=f"Job-{job_id}"
-                 )
-                 self.job_tasks[job_id] = job_task
-                 await self.broadcast_job_status(job_id, JobStatus.RUNNING, f"Starting research on: {user_query[:50]}...")
-                 return job_id, planned_tasks_data # Return the job ID and plan data
-            else:
-                 logger.error("Failed to create initial task and establish Job ID.")
-                 raise RuntimeError("Failed to initialize job tasks.")
+            await self.websocket_manager.send_personal_json(
+                JobProgressMessage(payload={"job_id": job_id, "message": "Research plan generated. Starting execution..."}).dict(),
+                client_id
+            )
+            return job_id, created_tasks # Return the Pydantic Task models
 
         except Exception as e:
-            logger.exception(f"Error during job planning/initialization for query '{user_query[:100]}...': {e}")
-            # Optionally broadcast an error to the user?
-            await self.task_manager.connection_manager.broadcast_json({
-                "type": "job_error",
-                "detail": f"Failed to plan job for query '{user_query[:50]}...': {e}"
-            })
-            # Re-raise or return an error indicator
-            raise # Let the calling endpoint handle the HTTP error
-        
-    async def start_job_old(self, initial_task_id: str, topic: str):
-        """Initiates and runs the research flow for a given job"""
-        
-        if initial_task_id in self.active_jobs:
-            logger.warning(f"Job {initial_task_id} is already active.")
-            return
-
-        logger.info(f"Starting job {initial_task_id} for topic: {topic}")
-        self.active_jobs[initial_task_id] = JobStatus.RUNNING
-        self.pause_events[initial_task_id] = asyncio.Event() # Initially unset (not paused)
-
-        # Run the main flow in a background task
-        job_task = asyncio.create_task(
-            self._run_research_flow(initial_task_id),
-            name=f"Job-{initial_task_id}"
-        )
-        self.job_tasks[initial_task_id] = job_task
-        await self.broadcast_job_status(initial_task_id, JobStatus.RUNNING, f"Job started for topic: {topic}")
-
-
-    async def _run_research_flow(self, job_id: str):
-        """
-        Main background execution loop for a single research job.
-        Fetches pending tasks, dispatches them, handles state, errors, and completion.
-        """
-        job_final_status = JobStatus.FAILED # Default unless explicitly completed
-        final_report_content = None
-        
-        try:
-            logger.info(f"Job {job_id}: Workflow execution started.")
+            logger.error(f"Job {job_id}: Failed to start job: {e}", exc_info=True)
+            # Ensure job status is FAILED if it was created
+            try:
+                # Check if job exists before trying to update. Avoids error if create_job failed.
+                job_exists = await self.db.get_job(job_id)
+                if job_exists:
+                    await self.db.update_job_status(job_id, JobStatus.FAILED.value, f"Job startup failed: {str(e)}")
+            except Exception as db_e:
+                logger.error(f"Job {job_id}: Additionally failed to update job status to FAILED after startup error: {db_e}", exc_info=True)
             
+            await self.websocket_manager.send_personal_json(
+                JobFailedMessage(payload={"job_id": job_id, "error": f"Failed to start job: {str(e)}"}).dict(),
+                client_id
+            )
+            return job_id, [] # job_id might be new, return empty task list
+
+    async def _run_research_flow(self, job_id: str, user_query: str, client_id: str):
+        """Manages the execution of tasks for a given job_id."""
+        try:
+            logger.info(f"Job {job_id}: Starting research flow.")
+            await self.websocket_manager.send_personal_json(
+                JobProgressMessage(payload={"job_id": job_id, "message": "Research in progress..."}).dict(), client_id)
+
             # Track the current phase of research to broadcast appropriate high-level messages
-            current_phase = None
             search_phase_started = False
             filter_phase_started = False
             analysis_phase_started = False
-            
-            while self.active_jobs.get(job_id) == JobStatus.RUNNING:
-                # --- Pause Check ---
-                if self.pause_events[job_id].is_set():
-                    logger.info(f"Job {job_id} is paused. Waiting for resume signal...")
-                    # Wait until the event is cleared (by resume command)
-                    if self.active_jobs.get(job_id) != JobStatus.RUNNING:
-                         logger.info(f"Job {job_id} resume detected, but status is now {self.active_jobs.get(job_id)}. Exiting loop.")
-                         break
-                    logger.info(f"Job {job_id} resumed.")
-                    # Continue to next loop iteration after resume
-                    continue
 
-                # --- Get Next Pending Task ---
-                next_task = self.task_manager.get_next_pending_task_for_job(job_id)
-
-                # --- Check for Job Completion or Waiting State ---
+            while True:
+                next_task = await self.task_manager.get_next_pending_task_for_job(job_id)
                 if not next_task:
-                    if self.task_manager.has_running_tasks(job_id):
-                        # If no pending tasks but some are still running, wait
-                        logger.info(f"Job {job_id}: No pending tasks, but waiting for {len([t for t in self.task_manager.tasks.values() if t.job_id == job_id and t.status == TaskStatus.RUNNING])} running tasks.")
-                        await asyncio.sleep(1) # Wait a bit before checking again
+                    if await self.task_manager.has_running_tasks(job_id):
+                        await asyncio.sleep(1) # Wait for running tasks to complete
                         continue
+                    elif await self.task_manager.has_errored_tasks(job_id):
+                        logger.warning(f"Job {job_id}: No more pending tasks, but some tasks have errored. Job failed.")
+                        await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Job failed due to task errors.")
+                        logger.info(f"Job {job_id}: Sending job failed message via websocket")
+                        failed_message = JobFailedMessage(payload={
+                            "job_id": job_id,
+                            "error": "Job failed due to task errors."
+                        })
+                        await self.websocket_manager.send_personal_json(
+                            failed_message.dict(), client_id
+                        )
+                        return
                     else:
-                        # No pending and no running tasks left
-                        logger.info(f"Job {job_id}: No more pending or running tasks.")
-                        if not self.task_manager.has_errored_tasks(job_id):
-                             logger.info(f"Job {job_id} completed successfully.")
-                             job_final_status = JobStatus.COMPLETED
-                             await self.broadcast_job_status(job_id, JobStatus.COMPLETED, "Research completed successfully!")
-                        else:
-                             logger.warning(f"Job {job_id} finished, but with errors or skipped tasks.")
-                             job_final_status = JobStatus.FAILED
-                             # Send a user-friendly failure message
-                             await self.task_manager.connection_manager.broadcast_json(
-                                 JobFailedMessage(
-                                     job_id=job_id
-                                 ).dict()
-                             )
-                             break # Exit without trying to generate a report
-
-                        # --- Final Report Generation (only if job was successful) ---
-                        if job_final_status == JobStatus.COMPLETED:
-                            logger.info(f"Job {job_id} finished successfully. Generating final report...")
-                            final_report_content = await self._handle_final_report(job_id)
-                            
-                            if not final_report_content:
-                                logger.warning(f"Job {job_id}: No valid report content found. Marking as failed.")
-                                job_final_status = JobStatus.FAILED
-                                await self.task_manager.connection_manager.broadcast_json(
-                                    JobFailedMessage(
-                                        job_id=job_id,
-                                        message="Failed to generate a report. Please try again or rephrase your query."
-                                    ).dict()
-                                )
-                        break # Exit the while loop, job is done
+                        logger.info(f"Job {job_id}: All tasks completed.")
+                        break # All tasks processed
 
                 # --- Broadcast Phase Updates ---
-                # Check if we're entering a new phase based on next task type
                 if next_task.task_type == TaskType.SEARCH and not search_phase_started:
-                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Researching sources...")
+                    await self.websocket_manager.send_personal_json(
+                        JobProgressMessage(payload={"job_id": job_id, "message": "Researching sources..."}).dict(), client_id)
                     search_phase_started = True
                 elif next_task.task_type == TaskType.FILTER and not filter_phase_started:
-                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Consolidating information...")
+                    await self.websocket_manager.send_personal_json(
+                        JobProgressMessage(payload={"job_id": job_id, "message": "Consolidating information..."}).dict(), client_id)
                     filter_phase_started = True
                 elif (next_task.task_type == TaskType.SYNTHESIZE or next_task.task_type == TaskType.REASON) and not analysis_phase_started:
-                    await self.broadcast_job_status(job_id, JobStatus.RUNNING, "Analyzing and synthesizing...")
+                    await self.websocket_manager.send_personal_json(
+                        JobProgressMessage(payload={"job_id": job_id, "message": "Analyzing and synthesizing..."}).dict(), client_id)
                     analysis_phase_started = True
 
-                # --- Execute the Next Task ---
-                await self.task_manager.update_task_status(next_task.id, TaskStatus.RUNNING, detail="Orchestrator picked up task.")
-                task_failed = False
+                await self.task_manager.update_task_status(next_task.task_id, TaskStatus.RUNNING)
+                logger.info(f"Job {job_id}: Executing task {next_task.task_id} ({next_task.task_type.value}: {next_task.description})")
+                await self.websocket_manager.send_personal_json(
+                    JobProgressMessage(payload={
+                        "job_id": job_id,
+                        "message": f"Executing task: {next_task.task_type.value} - {next_task.description}"
+                    }).dict(), client_id)
+                
                 try:
-                    # Dispatch task to the appropriate agent via the dispatch map
-                    await self._dispatch_task(next_task)
+                    agent_function = self.agent_dispatch.get(next_task.task_type)
+                    if agent_function:
+                        # Prepare arguments for the agent method
+                        kwargs_for_agent = next_task.parameters.copy() if next_task.parameters else {}
+                        kwargs_for_agent['task_id'] = next_task.task_id
+                        kwargs_for_agent['job_id'] = job_id
 
-                    # If _dispatch_task completes *without raising an exception*,
-                    # check the task's status. If it's still RUNNING, mark COMPLETED.
-                    current_task_state = self.task_manager.get_task(next_task.id)
-                    if current_task_state and current_task_state.status == TaskStatus.RUNNING:
-                        await self.task_manager.update_task_status(
-                            next_task.id,
-                            TaskStatus.COMPLETED,
-                            detail="Task completed successfully by agent."
+                        # Different agents expect different parameter names
+                        if next_task.task_type == TaskType.REASON:
+                            # ReasoningAgent.run expects 'query', not 'topic'
+                            if 'query' not in kwargs_for_agent and user_query:
+                                kwargs_for_agent['query'] = user_query
+                        elif next_task.task_type == TaskType.SYNTHESIZE:
+                            # AnalysisAgent.run expects 'topic'
+                            if 'topic' not in kwargs_for_agent and user_query:
+                                kwargs_for_agent['topic'] = user_query
+
+                        # Execute agent function with kwargs
+                        task_result = await agent_function(**kwargs_for_agent)
+                        
+                        # Store result in database
+                        if task_result is not None:
+                            await self.task_manager.store_result(next_task.task_id, task_result)
+                        
+                        # Update task status to completed
+                        await self.task_manager.update_task_status(next_task.task_id, TaskStatus.COMPLETED)
+                        
+                        # Send task success message (send the full updated task from DB)
+                        completed_task_model = await self.task_manager.get_task(next_task.task_id)
+                        if completed_task_model:
+                            # Make sure we're sending a proper WebSocketMessage format
+                            logger.info(f"Job {job_id}: Sending task success message for task {next_task.task_id}")
+                            success_message = TaskSuccessMessage(payload=completed_task_model)
+                            await self.websocket_manager.send_personal_json(
+                                success_message.dict(), client_id
+                            )
+                        logger.info(f"Job {job_id}: Task {next_task.task_id} ({next_task.task_type.value}) completed.")
+                    elif next_task.task_type == TaskType.REPORT: # REPORT task is special
+                        logger.info(f"*******Entered Report Generation logic")
+                        # Call our report task handler function
+                        report_result = await self._run_report_task(
+                            task_id=next_task.task_id,
+                            job_id=job_id,
+                            **next_task.parameters if next_task.parameters else {}
                         )
                         
-                        # Broadcast task success message (but not full task update)
-                        await self.task_manager.connection_manager.broadcast_json(
-                            TaskSuccessMessage(
-                                job_id=job_id,
-                                task_id=next_task.id,
-                                task_type=next_task.task_type
-                            ).dict()
-                        )
-                    elif current_task_state:
-                         logger.debug(f"Task {next_task.id} finished with status {current_task_state.status} (not RUNNING). Not marking completed by Orchestrator.")
-                    else:
-                         # Should not happen if task existed before dispatch
-                         logger.warning(f"Task {next_task.id} not found after dispatch. Cannot update status.")
+                        # Extract the report content from the result
+                        if report_result and isinstance(report_result, dict) : #and "report" in report_result:
+                            final_report_content = report_result.get("report") # Use .get() for safety
+                            if not final_report_content:
+                                logger.error(f"Job {job_id}: Report task {next_task.task_id} did not produce 'report' key in its result dict.")
+                                final_report_content = "Error: Report generation failed to produce content."
+                                # Potentially mark task as error
+                                await self.task_manager.update_task_status(next_task.task_id, TaskStatus.ERROR, "Report content not found in result")
+                                failed_task_model = await self.task_manager.get_task(next_task.task_id)
+                                if failed_task_model:
+                                    await self.websocket_manager.send_personal_json(
+                                        TaskFailedMessage(payload=failed_task_model).dict(), client_id
+                                    )
+                                # Continue or raise depending on how critical this is, for now we send the error content.
 
+                            # Save the report to file
+                            report_file_path = await self._save_report_to_file(job_id, user_query, final_report_content)
+                            
+                            # Update the task result with the report path 
+                            # Update the result (we don't update status again as _run_report_task already did that)
+                            report_result["report_path"] = report_file_path
+                            await self.task_manager.store_result(next_task.task_id, report_result)
+                            await self.task_manager.update_task_status(next_task.task_id, TaskStatus.COMPLETED) # Ensure status is COMPLETED
+                            
+                            # Send final report message
+                            logger.info(f"Job {job_id}: Sending final report message via websocket")
+                            final_report_message = FinalReportMessage(payload={
+                                "job_id": job_id,
+                                "report_markdown": final_report_content
+                            })
+                            await self.websocket_manager.send_personal_json(
+                                final_report_message.dict(), client_id
+                            )
+                            logger.info(f"Job {job_id}: Final report generated and saved to {report_file_path}.")
+                            # Update job status to COMPLETED in DB
+                            await self.db.update_job_status(job_id, JobStatus.COMPLETED.value)
+                            logger.info(f"Job {job_id} status updated to COMPLETED in database.")
+                            return # Job successfully completed
+                        else:
+                            logger.error(f"Job {job_id}: Report task {next_task.task_id} did not produce a valid dictionary result or content.")
+                            await self.task_manager.update_task_status(next_task.task_id, TaskStatus.ERROR, "Report generation failed to produce valid result")
+                            failed_task_model = await self.task_manager.get_task(next_task.task_id)
+                            if failed_task_model:
+                                await self.websocket_manager.send_personal_json(
+                                    TaskFailedMessage(payload=failed_task_model).dict(), client_id
+                                )
+                            # This will likely lead to job failure in the main loop checks.
+                            raise ValueError("Cannot complete report: Invalid report content generated.")
+                    else:
+                        logger.warning(f"Job {job_id}: No agent function found for task type {next_task.task_type.value}. Skipping.")
+                        await self.task_manager.update_task_status(next_task.task_id, TaskStatus.SKIPPED, "No agent for task type")
+                        # Optionally send a task skipped message to client if needed
+                
                 except Exception as e:
-                    # Handle errors *raised by the agent execution* (_dispatch_task re-raises them)
-                    task_failed = True
-                    logger.error(f"Error executing Task {next_task.id} (Type: {next_task.task_type.value}): {e}", exc_info=False) # Log simply here
-                    error_msg = str(e)
-                    # Ensure task exists before updating status to ERROR
-                    if self.task_manager.get_task(next_task.id):
-                        await self.task_manager.update_task_status(
-                            next_task.id,
-                            TaskStatus.ERROR,
-                            error_message=error_msg,
-                            detail=f"Task failed during execution: {error_msg[:100]}..."
+                    logger.error(f"Job {job_id}: Error executing task {next_task.task_id} ({next_task.task_type.value}): {e}", exc_info=True)
+                    error_message_str = f"Error in {next_task.task_type.value} task: {str(e)}"
+                    await self.task_manager.update_task_status(next_task.task_id, TaskStatus.ERROR, error_message_str)
+                    failed_task_model = await self.task_manager.get_task(next_task.task_id) # Get the task with updated status and error message
+                    if failed_task_model:
+                        logger.info(f"Job {job_id}: Sending task failed message for task {next_task.task_id}")
+                        await self.websocket_manager.send_personal_json(
+                            TaskFailedMessage(payload=failed_task_model).dict(), client_id
                         )
-                    else:
-                        logger.error(f"Task {next_task.id} not found, cannot mark as ERROR after execution failure.")
+                    # Continue to next task, or job will fail if this was critical (handled by has_errored_tasks check)
+                    # No explicit JobFailedMessage here, rely on the check at the beginning of the loop.
 
-                # --- Loop Delay ---
-                # Add a small delay unless a task just failed (to avoid immediate re-check after pause)
-                if not task_failed:
-                    await asyncio.sleep(0.1)
+            # Final check for job status after loop finishes (e.g. if all tasks completed but no report was generated)
+            current_job_details = await self.db.get_job(job_id)
+            if current_job_details and current_job_details.get('status') != JobStatus.COMPLETED.value:
+                if await self.task_manager.has_errored_tasks(job_id):
+                    logger.warning(f"Job {job_id}: Exited research flow with errored tasks. Marking job as FAILED.")
+                    await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Job finished with errors in tasks.")
+                    await self.websocket_manager.send_personal_json(
+                        JobFailedMessage(payload={"job_id": job_id, "error": "Job finished with errors in one or more tasks."}).dict(), client_id)
+                else:
+                    logger.info(f"Job {job_id}: Exited research flow, no errors reported but not explicitly completed (e.g., no REPORT task). Considering it FAILED for now.")
+                    # This state might need more nuanced handling. If all tasks are COMPLETED but no REPORT, is it a success?
+                    # For now, if not COMPLETED via REPORT task, mark as FAILED. Needs review based on plan structure.
+                    await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Job finished without generating a final report.")
+                    logger.info(f"Job {job_id}: Sending job failed message via websocket")
+                    failed_message = JobFailedMessage(payload={
+                        "job_id": job_id,
+                        "error": "Job finished without generating a final report."
+                    })
+                    await self.websocket_manager.send_personal_json(
+                        failed_message.dict(), client_id
+                    )
+
         except asyncio.CancelledError:
-             logger.info(f"Job {job_id} task was cancelled.")
-             job_final_status = JobStatus.FAILED
-             await self.task_manager.connection_manager.broadcast_json(
-                 JobFailedMessage(
-                     job_id=job_id,
-                     message="Research was cancelled before completion."
-                 ).dict()
-             )
+            logger.info(f"Job {job_id}: Research flow was cancelled.")
+            await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Job cancelled during execution.")
+            logger.info(f"Job {job_id}: Sending job cancelled message via websocket")
+            cancel_message = JobFailedMessage(payload={
+                "job_id": job_id,
+                "error": "Job was cancelled."
+            })
+            await self.websocket_manager.send_personal_json(
+                cancel_message.dict(), client_id
+            )
         except Exception as e:
-            logger.exception(f"Critical unexpected error in research flow for job {job_id}: {e}")
-            job_final_status = JobStatus.FAILED
-            await self.task_manager.connection_manager.broadcast_json(
-                 JobFailedMessage(
-                     job_id=job_id,
-                     message="An unexpected error occurred. Please try again."
-                 ).dict()
-             )
+            logger.critical(f"Job {job_id}: Unhandled critical error in research flow: {e}", exc_info=True)
+            await self.db.update_job_status(job_id, JobStatus.FAILED.value, f"Critical error in research flow: {str(e)}")
+            logger.info(f"Job {job_id}: Sending critical error message via websocket")
+            error_message = JobFailedMessage(payload={
+                "job_id": job_id,
+                "error": f"A critical error occurred: {str(e)}"
+            })
+            await self.websocket_manager.send_personal_json(
+                error_message.dict(), client_id
+            )
         finally:
-            # Final actions regardless of how the loop exited
-            self.active_jobs[job_id] = job_final_status # Update final status
-            logger.info(f"Exiting research flow loop for job {job_id}. Final Status: {job_final_status.value}")
-            # Clean up resources for this job
-            self.pause_events.pop(job_id, None)
-            self.job_tasks.pop(job_id, None)
-            logger.info(f"Cleaned up resources for job {job_id}.")
+            logger.info(f"Job {job_id}: Research flow processing finished.")
+            if job_id in self.active_jobs:
+                del self.active_jobs[job_id]
 
-    async def _dispatch_task(self, task: Task):
-        """
-        Looks up the appropriate agent method based on TaskType and executes it,
-        passing necessary parameters. Handles cases where agents are unavailable.
-        Raises exceptions if agent execution fails.
-        """
-        logger.info(f"Dispatching Task Type: {task.task_type.value}, ID: {task.id}, Job: {task.job_id}")
-        logger.info(f"Task parameters: {json.dumps(task.parameters)}")
-
-        agent_method = self.agent_dispatch.get(task.task_type)
-
-        if not agent_method:
-            # Handle PLAN tasks (shouldn't be dispatched by loop) and unknown types
-            if task.task_type == TaskType.PLAN:
-                 logger.warning(f"PLAN task {task.id} reached dispatch logic unexpectedly. Marking completed.")
-                 await self.task_manager.update_task_status(task.id, TaskStatus.COMPLETED, detail="Planning completed (conceptual task).")
-                 return # Don't dispatch
-            else:
-                 logger.error(f"No agent method configured or agent unavailable for task type: {task.task_type.value}. Skipping task {task.id}.")
-                 await self.task_manager.update_task_status(task.id, TaskStatus.SKIPPED, detail=f"No handler for task type {task.task_type.value}")
-                 return # Skip if no handler
-
-        # Prepare arguments for the agent method
-        # Standard args: task_id, job_id
-        # Specific args come from task.parameters
-        kwargs_for_agent = task.parameters.copy() # Start with parameters dict
-        kwargs_for_agent['task_id'] = task.id
-        kwargs_for_agent['job_id'] = task.job_id
+    async def _save_report_to_file(self, job_id: str, query: str, report_content: str) -> str:
+        """Saves the generated report to a file and updates the job record in DB."""
+        # Sanitize query to create a filename
+        safe_query = "".join(c if c.isalnum() else "_" for c in query[:50])
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"report_{job_id}_{safe_query}_{timestamp}.md"
+        
+        output_dir = Path(settings.OUTPUT_DIR) / job_id # Store reports in a job-specific subfolder
+        output_dir.mkdir(parents=True, exist_ok=True)
+        report_file_path = output_dir / filename
 
         try:
-            # Call the appropriate agent method (e.g., self.search_agent.run(**kwargs_for_agent))
-            # The agent method is responsible for its own logic and storing results via TaskManager
-            await agent_method(**kwargs_for_agent)
-            logger.info(f"Agent method for task {task.id} (Type: {task.task_type.value}) completed execution.")
-        except Exception as agent_exec_error:
-             # Log the specific error from the agent call
-             logger.error(f"Agent execution failed for task {task.id} (Type: {task.task_type.value}). Error: {agent_exec_error}", exc_info=True)
-             # Re-raise the exception so the main loop (_run_research_flow) catches it,
-             # logs it again (with less detail maybe), sets task status to ERROR, and pauses the job.
-             raise agent_exec_error
+            with open(report_file_path, "w", encoding="utf-8") as f:
+                f.write(report_content)
+            logger.info(f"Job {job_id}: Report saved to {report_file_path}")
+
+            # Update the job record with the report path
+            await self.db.update_job_report_path(job_id, str(report_file_path))
+            logger.info(f"Job {job_id}: Final report path updated in database.")
+            return str(report_file_path)
+        except IOError as e:
+            logger.error(f"Job {job_id}: Error saving report to file {report_file_path}: {e}", exc_info=True)
+            # If saving fails, the job might still be considered complete but report path won't be set.
+            # We could update job status to FAILED here if report saving is critical.
+            # For now, log error and return a placeholder or re-raise.
+            raise
+
     async def _run_filter_agent(self, task_id: str, job_id: str, **kwargs):
-         """Wrapper to find inputs (previous search task IDs) for the filter agent."""
-         logger.info(f"Filter wrapper called for task {task_id}, job {job_id}. Kwargs ignored: {kwargs}")
-         # Filter agent needs IDs of preceding *completed* SEARCH tasks
+        """Wrapper to find inputs (search task IDs) for the filter agent."""
+        logger.info(f"Filter wrapper called for task {task_id}, job {job_id}. Kwargs: {kwargs}")
         
-         # Get completed search tasks for this job  
-         search_tasks = self.task_manager.get_completed_tasks_for_job(job_id, task_type=TaskType.SEARCH)
-         search_task_ids = [st.id for st in search_tasks]
-         
-         if not search_task_ids:
-              logger.warning(f"[Job {job_id} | Task {task_id}] Filter task found no preceding completed Search tasks.")
-         else:
-              logger.info(f"[Job {job_id} | Task {task_id}] Filter task using results from {len(search_tasks)} completed search tasks with IDs: {search_task_ids}")
+        # Get completed search tasks for this job  
+        search_tasks = await self.task_manager.get_completed_tasks_for_job(job_id, TaskType.SEARCH)
+        search_task_ids = [st.task_id for st in search_tasks]
+        
+        if not search_task_ids:
+            logger.warning(f"[Job {job_id} | Task {task_id}] Filter task found no preceding completed Search tasks.")
+            raise ValueError("No completed search tasks found to filter")
+        else:
+            logger.info(f"[Job {job_id} | Task {task_id}] Filter task using results from {len(search_tasks)} completed search tasks with IDs: {search_task_ids}")
 
-         # Call the actual filter agent run method
-         await self.filtering_agent.run(search_task_ids=search_task_ids, current_task_id=task_id, job_id=job_id)
+        # Call the actual filter agent run method
+        filter_result = await self.filtering_agent.run(
+            search_task_ids=search_task_ids, 
+            current_task_id=task_id, 
+            job_id=job_id
+        )
 
-         # Broadcast summary after filter completes successfully 
-         filter_result = self.task_manager.get_result(task_id)
-         if filter_result and isinstance(filter_result, dict):
-             filtered_items = filter_result.get("filtered_results", [])
-             summary = JobResultsSummary(
-                     job_id=job_id,
-                     unique_sources_found=len(filtered_items),
-                     duplicates_removed=filter_result.get("duplicates_removed", 0),
-                     sources_analyzed_count=filter_result.get("sources_analyzed_count", len(search_tasks)),
-                     top_sources=[
-                         {"title": item.get("title", "N/A"), "url": item.get("url", "N/A")}
-                         for item in filtered_items[:5] if isinstance(item, dict)
-                     ]
-                 )
-             await self.broadcast_job_summary(summary)
-
+        # Broadcast summary after filter completes successfully 
+        if filter_result and isinstance(filter_result, dict):
+            filtered_items = filter_result.get("filtered_results", [])
+            summary = JobResultsSummary(
+                    job_id=job_id,
+                    unique_sources_found=len(filtered_items),
+                    duplicates_removed=filter_result.get("duplicates_removed", 0),
+                    sources_analyzed_count=filter_result.get("sources_analyzed_count", len(search_tasks)),
+                    top_sources=[
+                        {"title": item.get("title", "N/A"), "url": item.get("url", "N/A")}
+                        for item in filtered_items[:5] if isinstance(item, dict)
+                    ]
+                )
+            await self.broadcast_job_summary(summary)
+        
+        return filter_result
 
     async def _run_analysis_agent(self, task_id: str, job_id: str, topic: str, **kwargs):
-         """Wrapper to find inputs (preceding filter task ID) for the analysis agent."""
-         logger.debug(f"Analysis wrapper called for task {task_id}, job {job_id}. Topic: {topic}. Kwargs ignored: {kwargs}")
-         # Analysis agent needs the filter results from the preceding filter task
-         
-         # Get the completed filter tasks for this job
-         filter_tasks = self.task_manager.get_completed_tasks_for_job(job_id, task_type=TaskType.FILTER)
-         
-         if not filter_tasks:
-             logger.error(f"[Job {job_id} | Task {task_id}] Cannot run Analysis: No preceding completed Filter task found.")
-             # Raise error to stop processing this task
-             raise ValueError("Preceding Filter task not found or not completed for Analysis.")
-         
-         # Assume latest completed filter task is the relevant one
-         filter_task = filter_tasks[-1]  # Last one is most recent
-         filter_task_id = filter_task.id
-         
-         # Get the actual filter result
-         filter_result = self.task_manager.get_result(filter_task_id)
-         if not filter_result:
-             logger.error(f"[Job {job_id} | Task {task_id}] Filter task {filter_task_id} has no stored result.")
-             raise ValueError(f"Filter task {filter_task_id} has no result for Analysis.")
-             
-         logger.info(f"[Job {job_id} | Task {task_id}] Analysis task using results from Filter Task {filter_task_id}")
+        """Wrapper to find inputs (preceding filter task ID) for the analysis agent."""
+        logger.debug(f"Analysis wrapper called for task {task_id}, job {job_id}. Topic: {topic}. Kwargs: {kwargs}")
+        
+        # Get the completed filter tasks for this job
+        filter_tasks = await self.task_manager.get_completed_tasks_for_job(job_id, TaskType.FILTER)
+        
+        if not filter_tasks:
+            logger.error(f"[Job {job_id} | Task {task_id}] Cannot run Analysis: No preceding completed Filter task found.")
+            # Raise error to stop processing this task
+            raise ValueError("Preceding Filter task not found or not completed for Analysis.")
+        
+        # Assume latest completed filter task is the relevant one
+        filter_task = filter_tasks[-1]  # Last one is most recent
+        filter_task_id = filter_task.task_id
+        
+        # Get the actual filter result
+        filter_result = await self.task_manager.get_result(filter_task_id)
+        if not filter_result:
+            logger.error(f"[Job {job_id} | Task {task_id}] Filter task {filter_task_id} has no stored result.")
+            raise ValueError(f"Filter task {filter_task_id} has no result for Analysis.")
+        
+        logger.info(f"[Job {job_id} | Task {task_id}] Analysis task using results from Filter Task {filter_task_id}")
 
-         # Call the actual analysis agent run method with the filter result
-         await self.analysis_agent.run(
-             topic=topic, # Passed from parameters via kwargs_for_agent -> **kwargs
-             filter_result=filter_result,  # Pass filter result directly
-             current_task_id=task_id,
-             job_id=job_id
-         )
-
+        # Call the actual analysis agent run method with the filter result
+        analysis_result = await self.analysis_agent.run(
+            topic=topic, # Passed from parameters via kwargs_for_agent -> **kwargs
+            filter_result=filter_result,  # Pass filter result directly
+            current_task_id=task_id,
+            job_id=job_id
+        )
+        
+        return analysis_result
 
     async def _run_report_task(self, task_id: str, job_id: str, source_task_id: Optional[str] = None, **kwargs):
          """
          Handles the REPORT task. Typically finds the result of the preceding
          SYNTHESIZE or REASON task and stores it under the REPORT task's ID.
-         If no such task is available, will try to use filter results directly.
+         If no such task is available, will try to use filter results directly.    
          """
-         logger.debug(f"Report wrapper called for task {task_id}, job {job_id}. Source: {source_task_id}. Kwargs ignored: {kwargs}")
+         logger.info(f"Report wrapper called for task {task_id}, job {job_id}. Source: {source_task_id}. Kwargs ignored: {kwargs}")
          report_content = None
          
          if source_task_id:
              # Use specified source if provided
-             result_to_report = self.task_manager.get_result(source_task_id)
+             result_to_report = await self.task_manager.get_result(source_task_id)
              if result_to_report is None:
-                 logger.warning(f"Report task {task_id} could not find result for specified source task {source_task_id}.")
-                 # Continue to fallback methods
+                 logger.error(f"Report task {task_id} could not find result for specified source task {source_task_id}.")
+                   
              else:
                  # Extract content from the specified source
                  if isinstance(result_to_report, dict):
@@ -470,19 +510,24 @@ class Orchestrator:
          if not report_content:
              # Find latest completed synthesis or reasoning task
              # Get all task objects from task_manager (not results!)
-             tasks = list(self.task_manager.tasks.values())
-             synthesis_tasks = []
-             for task in reversed(tasks):
-                 if task.job_id == job_id and task.status == TaskStatus.COMPLETED:
-                     if task.task_type in [TaskType.SYNTHESIZE, TaskType.REASON]:
-                         synthesis_tasks.append(task)
-                         
+             synthesis_tasks = await self.task_manager.get_completed_tasks_for_job(job_id, TaskType.SYNTHESIZE)
+             reason_tasks = await self.task_manager.get_completed_tasks_for_job(job_id, TaskType.REASON)
+             
+             potential_tasks = []
              if synthesis_tasks:
+                 potential_tasks.extend(synthesis_tasks)
+             if reason_tasks:
+                 potential_tasks.extend(reason_tasks)
+                 
+             # Sort by sequence_order to get the latest one
+             potential_tasks.sort(key=lambda t: t.sequence_order, reverse=True)
+                 
+             if potential_tasks:
                  # Use the latest completed task
-                 latest_task = synthesis_tasks[0]
-                 source_task_id = latest_task.id
+                 latest_task = potential_tasks[0]
+                 source_task_id = latest_task.task_id
                  logger.info(f"Report task {task_id} automatically targeting result from task {source_task_id} (Type: {latest_task.task_type.value})")
-                 result_to_report = self.task_manager.get_result(source_task_id)
+                 result_to_report = await self.task_manager.get_result(source_task_id)
                  
                  if result_to_report:
                      # Extract content
@@ -490,18 +535,17 @@ class Orchestrator:
                          report_content = result_to_report.get("report") or result_to_report.get("analysis_output") or result_to_report.get("reasoning_output")
                      elif isinstance(result_to_report, str):
                          report_content = result_to_report
-             
+         
          # Fallback: if still no report content, try using filter results directly
          if not report_content:
              logger.warning(f"Report task {task_id} could not find a relevant source task. Trying to use filter results as fallback.")
              
              # Get the latest filter task results
-             filter_tasks = [t for t in self.task_manager.tasks.values() 
-                            if t.job_id == job_id and t.status == TaskStatus.COMPLETED and t.task_type == TaskType.FILTER]
+             filter_tasks = await self.task_manager.get_completed_tasks_for_job(job_id, TaskType.FILTER)
              
              if filter_tasks:
                  filter_task = filter_tasks[-1]  # Use the latest one
-                 filter_result = self.task_manager.get_result(filter_task.id)
+                 filter_result = await self.task_manager.get_result(filter_task.task_id)
                  
                  if filter_result and isinstance(filter_result, dict) and "filtered_results" in filter_result:
                      # Generate a simple report from filter results
@@ -535,17 +579,55 @@ class Orchestrator:
          # If we have report content, store it
          if report_content and isinstance(report_content, str):
              # Store the extracted or generated content
-             await self.task_manager.store_result(task_id, {"report": report_content})
+             result_dict = {"report": report_content}
+             await self.task_manager.store_result(task_id, result_dict)
              logger.info(f"Report task {task_id} completed with content from {source_task_id if source_task_id else 'fallback mechanism'}.")
-             return
+             return result_dict
          
          # If we reached here, we couldn't generate any report
          logger.warning(f"Report task {task_id}: Could not extract or generate any report content.")
-         await self.task_manager.store_result(task_id, {"report": "No report could be generated due to missing or invalid source data."})
-         # Don't raise an exception - just store a placeholder report
+         placeholder_report = {"report": "No report could be generated due to missing or invalid source data."}
+         await self.task_manager.store_result(task_id, placeholder_report)
+         # Return the placeholder report
+         return placeholder_report
 
+    async def resume(self, job_id: str):
+        """Resumes a paused job."""
+        if job_id in self.pause_events and self.pause_events[job_id].is_set():
+             logger.info(f"Received resume command for paused job {job_id}.")
+             self.active_jobs[job_id] = JobStatus.RUNNING # Ensure status is RUNNING
+             self.pause_events[job_id].clear() # Clear the event to allow the loop to continue
+             # Don't broadcast here, the loop will broadcast upon resuming
+        else:
+             logger.warning(f"Received resume command for job {job_id}, but it was not paused or doesn't exist.")
 
-    # --- Final Report Handling (Called at end of job) ---
+    async def skip_task_and_resume(self, job_id: str, task_id: str):
+         """Marks a task as skipped and potentially resumes the job."""
+         logger.info(f"Received skip command for task {task_id} in job {job_id}.")
+         await self.task_manager.update_task_status(task_id, TaskStatus.SKIPPED, detail="Task skipped by user.")
+         # If the job was paused specifically because *this task* failed, resume it.
+         if job_id in self.pause_events and self.pause_events[job_id].is_set():
+              # Check if the paused state was due to this task (may need better state tracking)
+              # Simple assumption: if paused, skipping an error task should allow resume
+              logger.info(f"Job {job_id} was paused, resuming after skipping task {task_id}.")
+              await self.resume(job_id)
+
+    async def broadcast_job_status(self, job_id: str, status: JobStatus, detail: str):
+        """Broadcasts overall job status updates via WebSocket."""
+        message = {
+            "type": "job_status",
+            "job_id": job_id,
+            "status": status.value,
+            "detail": detail
+        }
+        await self.task_manager.connection_manager.broadcast_json(message) # Use TM's connection mgr
+
+    async def broadcast_job_summary(self, summary: JobResultsSummary):
+        """Broadcasts the research results summary via WebSocket."""
+        logger.info(f"Broadcasting results summary for Job {summary.job_id}: Found {summary.unique_sources_found} sources.")
+        # Use TaskManager's connection_manager instance
+        await self.task_manager.connection_manager.broadcast_json(summary.dict())
+
     async def _handle_final_report(self, job_id: str):
         """
         Finds the final report and returns it.
@@ -584,6 +666,12 @@ class Orchestrator:
              elif isinstance(final_result, str):
                  report_markdown = final_result # Simple string result
 
+             # ADDED LOGGING STARTS HERE
+             logger.info(f"Job {job_id}: In _handle_final_report. last_relevant_task: {last_relevant_task.id if last_relevant_task else 'None'} (Type: {last_relevant_task.task_type.value if last_relevant_task else 'None'})")
+             logger.info(f"Job {job_id}: In _handle_final_report. final_result from TaskManager for task {last_relevant_task.id if last_relevant_task else 'N/A'}: {final_result}")
+             logger.info(f"Job {job_id}: In _handle_final_report. Extracted report_markdown: '{report_markdown}' (Type: {type(report_markdown)})")
+             # ADDED LOGGING ENDS HERE
+
              if isinstance(report_markdown, str) and report_markdown.strip():
                  logger.info(f"Found final report content in task {last_relevant_task.id} (Type: {last_relevant_task.task_type.value}). Saving and broadcasting.")
                  await self._save_report_to_file(job_id, report_markdown)
@@ -596,102 +684,77 @@ class Orchestrator:
              logger.warning(f"Job {job_id} finished, but no final REPORT, SYNTHESIZE, or REASON task found with results.")
              return None
 
-    async def resume(self, job_id: str):
-        """Resumes a paused job."""
-        if job_id in self.pause_events and self.pause_events[job_id].is_set():
-             logger.info(f"Received resume command for paused job {job_id}.")
-             self.active_jobs[job_id] = JobStatus.RUNNING # Ensure status is RUNNING
-             self.pause_events[job_id].clear() # Clear the event to allow the loop to continue
-             # Don't broadcast here, the loop will broadcast upon resuming
-        else:
-             logger.warning(f"Received resume command for job {job_id}, but it was not paused or doesn't exist.")
-
-    async def skip_task_and_resume(self, job_id: str, task_id: str):
-         """Marks a task as skipped and potentially resumes the job."""
-         logger.info(f"Received skip command for task {task_id} in job {job_id}.")
-         await self.task_manager.update_task_status(task_id, TaskStatus.SKIPPED, detail="Task skipped by user.")
-         # If the job was paused specifically because *this task* failed, resume it.
-         if job_id in self.pause_events and self.pause_events[job_id].is_set():
-              # Check if the paused state was due to this task (may need better state tracking)
-              # Simple assumption: if paused, skipping an error task should allow resume
-              logger.info(f"Job {job_id} was paused, resuming after skipping task {task_id}.")
-              await self.resume(job_id)
-
-
-    async def broadcast_job_status(self, job_id: str, status: JobStatus, detail: str):
-        """Broadcasts overall job status updates via WebSocket."""
-        message = {
-            "type": "job_status",
-            "job_id": job_id,
-            "status": status.value,
-            "detail": detail
-        }
-        await self.task_manager.connection_manager.broadcast_json(message) # Use TM's connection mgr
-
-    async def broadcast_job_summary(self, summary: JobResultsSummary):
-        """Broadcasts the research results summary via WebSocket."""
-        logger.info(f"Broadcasting results summary for Job {summary.job_id}: Found {summary.unique_sources_found} sources.")
-        # Use TaskManager's connection_manager instance
-        await self.task_manager.connection_manager.broadcast_json(summary.dict())
-
-    async def _save_report_to_file(self, job_id: str, report_markdown: str):
-        """Saves the final report markdown to a file."""
-        try:
-            # Create output directory if it doesn't exist
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-            # Sanitize job_id for filename (optional, depends on job_id format)
-            safe_job_id = job_id.replace(":", "_").replace("/", "_").replace("\\", "_")
-            filename = os.path.join(OUTPUT_DIR, f"{safe_job_id}_report.md")
-
-            with open(filename, "w", encoding="utf-8") as f:
-                f.write(report_markdown)
-            logger.info(f"Successfully saved report for job {job_id} to {filename}")
-
-        except IOError as e:
-            logger.error(f"Failed to save report file for job {job_id}: {e}")
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred while saving report for job {job_id}: {e}")
-
     async def _broadcast_final_report(self, job_id: str, report_markdown: str):
         """Broadcasts the final report via WebSocket."""
         logger.info(f"Broadcasting final report for job {job_id} via WebSocket.")
         message = FinalReportMessage(job_id=job_id, report_markdown=report_markdown)
         # Use TaskManager's connection_manager instance
         await self.task_manager.connection_manager.broadcast_json(message.dict())
-    
 
+    async def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieves the status and details of a job from the database."""
+        job_details = await self.db.get_job(job_id)
+        if job_details:
+            # Optionally, enrich with task information if needed by frontend
+            # tasks = await self.task_manager.get_all_tasks_for_job(job_id)
+            # job_details['tasks'] = [task.dict() for task in tasks]
+            return job_details # Returns a dict from the DB handler
+        return None
 
-    async def broadcast_job_summary(self, summary: JobResultsSummary):
-         """Broadcasts the research results summary via WebSocket."""
-         logger.info(f"Broadcasting results summary for Job {summary.job_id}: Found {summary.unique_sources_found} sources.")
-         await self.task_manager.connection_manager.broadcast_json(summary.dict())
+    async def get_all_jobs(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """Retrieves all jobs from the database."""
+        return await self.db.get_all_jobs(limit=limit, offset=offset)
 
-    async def _handle_report_completion(self, task: Task):
-        """
-        Checks if a completed task is the final report/analysis task,
-        and if so, retrieves, saves, and broadcasts the report.
-        """
-        desc_lower = task.description.lower()
-        job_id = task.job_id # Get job_id from the task object
+    async def shutdown(self):
+        """Gracefully shuts down active jobs."""
+        logger.info("Orchestrator shutdown initiated. Cancelling active jobs...")
+        active_job_ids = list(self.active_jobs.keys()) # Get a list of keys before iterating
+        for job_id in active_job_ids:
+            logger.info(f"Cancelling job {job_id} as part of shutdown...")
+            await self.cancel_job(job_id)
+        
+        # Wait for all active tasks to finish cancellation (or a timeout)
+        if self.active_jobs: # Check if any jobs are still tracked (cancel_job should remove them)
+            await asyncio.gather(*self.active_jobs.values(), return_exceptions=True)
+        logger.info("All active jobs processed during shutdown.")
 
-        # Check if this task type is expected to produce the final report
-        if "analyze" in desc_lower or "synthesize" in desc_lower or "generate report" in desc_lower:
-            logger.info(f"[Job {job_id}] Task {task.id} ({task.description}) completed. Checking for final report...")
-
-            analysis_result = self.task_manager.get_result(task.id)
-            logger.debug(f"[Job {job_id}] Result retrieved for task {task.id}: {analysis_result is not None}") # Log if result exists
-
-            if analysis_result and isinstance(analysis_result, dict) and "report" in analysis_result:
-                report_markdown = analysis_result["report"]
-                if isinstance(report_markdown, str) and report_markdown.strip():
-                    logger.info(f"[Job {job_id}] Valid report found for task {task.id}. Saving and broadcasting.")
-                    # Perform saving and broadcasting
-                    await self._save_report_to_file(job_id, report_markdown)
-                    await self._broadcast_final_report(job_id, report_markdown)
-                else:
-                    logger.warning(f"[Job {job_id}] Report found for task {task.id}, but it's empty or not a string.")
+    async def cancel_job(self, job_id: str):
+        """Cancels an active job."""
+        if job_id in self.active_jobs:
+            task = self.active_jobs[job_id]
+            if not task.done():
+                task.cancel()
+                logger.info(f"Job {job_id}: Cancellation request sent.")
+                # The _run_research_flow's finally block should handle DB status update
+                try:
+                    await task # Allow cancellation to propagate
+                except asyncio.CancelledError:
+                    logger.info(f"Job {job_id} successfully cancelled.")
             else:
-                logger.warning(f"[Job {job_id}] Analysis/Report task {task.id} completed, but no valid 'report' key found in its result.")
-        # else:
-            # logger.debug(f"Task {task.id} ({task.description}) is not a report-generating task. Skipping report handling.")
+                logger.info(f"Job {job_id}: Was already done, no active cancellation needed.")
+        else:
+            logger.warning(f"Job {job_id}: Cannot cancel, no active job found.")
+            # Check DB for job status if it was already processed or failed
+            job_details = await self.db.get_job(job_id)
+            if job_details and job_details.get('status') not in [JobStatus.COMPLETED.value, JobStatus.FAILED.value]:
+                 await self.db.update_job_status(job_id, JobStatus.FAILED.value, "Job cancelled while not actively running in orchestrator.")
+
+# Example of how Orchestrator might be initialized in main.py:
+# async def startup_event():
+#     global orchestrator_instance, db_instance
+#     db_instance = await Database.get_instance()
+#     task_manager_instance = TaskManager(database=db_instance)
+#     websocket_manager_instance = ConnectionManager()
+#     orchestrator_instance = Orchestrator(
+#         task_manager=task_manager_instance,
+#         websocket_manager=websocket_manager_instance,
+#         database=db_instance
+#     )
+#     # Potentially connect websocket manager here if it has an init method
+#     # await websocket_manager_instance.connect_all_clients_somehow() # if needed
+
+# async def shutdown_event():
+#     if orchestrator_instance:
+#         await orchestrator_instance.shutdown()
+#     if db_instance:
+#         await db_instance.close()
