@@ -11,25 +11,83 @@ from models import InitialTopic, UserCommand, Task, TaskType, JobStatus, StatusU
 from websocket_manager import ConnectionManager
 from task_manager import TaskManager
 from orchestrator import Orchestrator
+from contextlib import asynccontextmanager
+from pathlib import Path
+import uuid
+from starlette.websockets import WebSocketState
 
 # Import DB settings and handler
 from config.settings import DBSettings
 from database_layer.database import Database
 from database_layer.base_db_handler import BaseDBHandler
 
-
 from api.auth_router import router as auth_router
 
-
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-
 load_dotenv()
 
-app = FastAPI(title="Research Agent API")
 
 
+# --- Global instances (to be initialized in lifespan context) ---
+db_instance: Optional[Database] = None
+task_manager_instance: Optional[TaskManager] = None
+websocket_manager_instance: Optional[ConnectionManager] = None
+orchestrator_instance: Optional[Orchestrator] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handles application startup and shutdown events."""
+    global db_instance, task_manager_instance, websocket_manager_instance, orchestrator_instance
+    logger.info("Application startup: Initializing resources...")
+
+    try:
+        # Initialize Database (ensure DB_PATH is set in settings)
+        db_settings=DBSettings()
+        db_instance = await Database.get_instance(db_path=db_settings.connection_string)
+        logger.info("Database instance created and initialized.")
+
+        # Initialize TaskManager with the database instance
+        task_manager_instance = TaskManager(database=db_instance)
+        logger.info("TaskManager initialized.")
+
+        # Initialize WebSocketManager
+        websocket_manager_instance = ConnectionManager()
+        logger.info("WebSocketManager initialized.")
+
+        # Initialize Orchestrator
+        # Prompt library path can be configured or use default
+        prompt_lib_path = str(Path(__file__).parent / "llm_providers" / "prompts.json")
+        orchestrator_instance = Orchestrator(
+            task_manager=task_manager_instance,
+            websocket_manager=websocket_manager_instance,
+            database=db_instance,
+            prompt_library_path=prompt_lib_path
+        )
+        logger.info("Orchestrator initialized.")
+        logger.info("Application startup complete.")
+        yield
+    except Exception as e:
+        logger.critical(f"Application startup failed: {e}", exc_info=True)
+        # Optionally re-raise or handle to prevent app from starting in a bad state
+        raise
+    finally:
+        logger.info("Application shutdown: Cleaning up resources...")
+        if orchestrator_instance:
+            await orchestrator_instance.shutdown()
+            logger.info("Orchestrator shutdown complete.")
+        if db_instance:
+            await db_instance.close()
+            logger.info("Database connection closed.")
+        # Websocket manager might have cleanup if needed (e.g., closing all connections)
+        if websocket_manager_instance:
+             # await websocket_manager_instance.close_all_connections() # If such method exists
+             logger.info("WebSocketManager resources released (if any).")
+        logger.info("Application shutdown complete.")
+
+app = FastAPI(title="Research Agent API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # TODO: change in production
@@ -38,13 +96,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-db_settings = DBSettings()
-db_handler = Database(db_settings.connection_string)
-
 # Dependency to provide DB handler to routes
 async def get_db_handler() -> BaseDBHandler:
-    return db_handler
+    return db_instance
 
 # Override the get_db_handler dependency in auth_router
 auth_router.dependencies = [Depends(get_db_handler)]
@@ -52,20 +106,6 @@ auth_router.dependencies = [Depends(get_db_handler)]
 # Include routers
 app.include_router(auth_router)
 
-# Database lifecycle events
-@app.on_event("startup")
-async def startup_db_client():
-    logger.info("Connecting to database...")
-    await db_handler.connect()
-    logger.info("Initializing database schema...")
-    await db_handler.initialize_schema()
-    logger.info("Database initialization complete")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    logger.info("Disconnecting from database...")
-    await db_handler.disconnect()
-    logger.info("Database disconnected")
 
 # Root endpoint
 @app.get("/", response_class=HTMLResponse)
@@ -87,12 +127,11 @@ async def root():
         </body>
     </html>
     """
-
-connection_manager = ConnectionManager()
-task_manager = TaskManager(connection_manager=connection_manager)
-orchestrator = Orchestrator(task_manager=task_manager)
-task_manager.set_orchestrator(orchestrator) # Link back
-
+#commenting out below coz i refined them in lifespan
+#connection_manager = ConnectionManager()
+#task_manager = TaskManager(connection_manager=connection_manager)
+#orchestrator = Orchestrator(task_manager=task_manager)
+#task_manager.set_orchestrator(orchestrator) # Link back
 
 # --- HTML for WebSocket Testing (Update JS) ---
 html = """
@@ -718,9 +757,8 @@ html = """
 </html>
 """
 
-
 @app.post("/start_job", status_code=status.HTTP_202_ACCEPTED)
-async def start_new_job(payload: Dict[str, str]):
+async def start_new_job(payload: Dict[str, str], request: Request):
     """
     Initiates a new research job, returning the job ID and the initial plan.
     """
@@ -728,10 +766,14 @@ async def start_new_job(payload: Dict[str, str]):
     if not user_query:
          raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing 'query' field in request body.")
 
-    logger.info(f"Received job request for query: {user_query}")
+    # Extract client_id from request headers (front end is doing already , have to check if this is good way of implementing to communicate to frontend or else change the entire communication strategy)
+    client_id = request.headers.get("x-client-id", "default-client")
+    logger.info(f"Received job request for query: '{user_query}' from client_id: {client_id}")
+    
     try:
-        # Call orchestrator's start_job, expecting (job_id, planned_tasks_data)
-        job_id, planned_tasks_data = await orchestrator.start_job(user_query=user_query)
+        # Call orchestrator's start_job with the client_id
+        job_id, planned_tasks_data = await orchestrator_instance.start_job(user_query=user_query, client_id=client_id)
+        logger.info(f"Job {job_id} successfully started for client {client_id} with {len(planned_tasks_data)} planned tasks")
 
         # Return both job_id and the plan
         return {
@@ -743,7 +785,7 @@ async def start_new_job(payload: Dict[str, str]):
     except (ValueError, RuntimeError) as e: # Catch planning or validation errors
          logger.error(f"Failed to plan or start job for query '{user_query}': {e}", exc_info=True)
          # Send error back to client immediately
-         await connection_manager.broadcast_json({
+         await websocket_manager_instance.broadcast_json({
              "type": "job_error",
              "detail": f"Failed to initiate job: {e}"
          })
@@ -753,7 +795,7 @@ async def start_new_job(payload: Dict[str, str]):
          )
     except Exception as e:
         logger.exception(f"Unexpected error starting job for query {user_query}: {e}")
-        await connection_manager.broadcast_json({
+        await websocket_manager_instance.broadcast_json({
              "type": "job_error",
              "detail": f"Internal server error during job initiation."
          })
@@ -762,47 +804,72 @@ async def start_new_job(payload: Dict[str, str]):
             detail=f"Internal server error: {e}"
         )
 
-
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await connection_manager.connect(websocket)
-    logger.info(f"Client #{client_id} connected.")
+    if not websocket_manager_instance:
+        logger.error("WebsocketManager not initialized. Cannot accept WebSocket connection.")
+        # Unfortunately, we can't send an HTTP error code here easily after WS handshake starts.
+        # We can close the connection with a code.
+        await websocket.close(code=1011) # Internal error
+        return
 
-    try:
-        active_job_statuses = {job_id: status.value for job_id, status in orchestrator.active_jobs.items()}
-        await connection_manager.send_personal_message(json.dumps({"type": "active_jobs", "jobs": active_job_statuses}), websocket)
-    except Exception as e:
-        logger.error(f"Error sending initial active jobs status to {client_id}: {e}")
-
-
+    await websocket_manager_instance.connect(websocket, client_id)
+    logger.info(f"Client {client_id} connected via WebSocket.")
     try:
         while True:
             data = await websocket.receive_text()
-            # logger.debug(f"Received message from {client_id}: {data}") # Less verbose logging
-            try:
-                command_data = json.loads(data)
-                # Handle commands via TaskManager -> Orchestrator
-                await task_manager.handle_user_command(command_data)
-            except json.JSONDecodeError:
-                 logger.warning(f"WS {client_id}: Received non-JSON message: {data}")
-                 await connection_manager.send_personal_message(json.dumps({"error": "Invalid JSON"}), websocket)
-            except Exception as e:
-                 logger.error(f"WS {client_id}: Error processing command: {e}", exc_info=True)
-                 await connection_manager.send_personal_message(json.dumps({"error": f"Error processing command: {e}"}), websocket)
+            # For now, backend primarily sends updates. If frontend needs to send commands:
+            # logger.info(f"Received message from {client_id}: {data}")
+            # Here you would parse `data` (e.g., JSON) and handle commands if any.
+            # Example: if orchestrator_instance and task_manager_instance:
+            #     parsed_data = json.loads(data)
+            #     if parsed_data.get("type") == "user_command":
+            #         await task_manager_instance.handle_user_command(parsed_data.get("payload"))
+            # For this refactor, we assume one-way (server to client) for progress primarily.
+            await websocket.send_text(f"Message received by server for {client_id}. Echo: {data}") # Basic echo for testing
 
     except WebSocketDisconnect:
-        connection_manager.disconnect(websocket)
-        logger.info(f"Client #{client_id} disconnected")
+        websocket_manager_instance.disconnect(client_id)
+        logger.info(f"Client {client_id} disconnected from WebSocket.")
     except Exception as e:
-        logger.error(f"WebSocket error for client {client_id}: {e}", exc_info=True)
-        connection_manager.disconnect(websocket) # Ensure disconnect on error
-
+        logger.error(f"Error in WebSocket connection for client {client_id}: {e}", exc_info=True)
+        # Try to close gracefully if not already disconnected
+        if websocket.client_state != WebSocketState.DISCONNECTED:
+            await websocket.close(code=1011) # Internal server error
+        websocket_manager_instance.disconnect(client_id) # Ensure cleanup using client_id
 
 @app.get("/")
 async def get():
     return HTMLResponse(html)
 
+@app.get("/status/{job_id}")
+async def get_job_status_api(job_id: str):
+    """API endpoint to get the status of a specific job."""
+    if not orchestrator_instance:
+        raise HTTPException(status_code=503, detail="Service not ready.")
+    job_details = await orchestrator_instance.get_job_status(job_id)
+    if not job_details:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
+    return job_details # job_details is already a dict from DB layer
 
+@app.get("/jobs")
+async def get_all_jobs_api(limit: int = 20, offset: int = 0):
+    """API endpoint to get a list of all jobs."""
+    if not orchestrator_instance:
+        raise HTTPException(status_code=503, detail="Service not ready.")
+    jobs = await orchestrator_instance.get_all_jobs(limit=limit, offset=offset)
+    return jobs # jobs is already a list of dicts
+
+@app.post("/jobs/{job_id}/cancel", status_code=200)
+async def cancel_job_api(job_id: str):
+    if not orchestrator_instance:
+        raise HTTPException(status_code=503, detail="Service not ready.")
+    try:
+        await orchestrator_instance.cancel_job(job_id)
+        return {"job_id": job_id, "message": "Job cancellation requested."}
+    except Exception as e:
+        logger.error(f"Error cancelling job {job_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
 
 # --- Run the app ---
 if __name__ == "__main__":
