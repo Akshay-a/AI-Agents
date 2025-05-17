@@ -21,7 +21,7 @@ from websocket_manager import ConnectionManager
 from database_layer.database import Database
 
 logger = logging.getLogger(__name__)
-OUTPUT_DIR = "D:\\Projects\\AI-Agents\\AI-DeepResearch\\DeepResearchAgent\\research_agent_backend\\LLM_outputs\\" 
+
 SEARCH_TASK_DELAY = 1.5
 
 class JobStatus(str, Enum): # This Enum is heart of managing all the jobs and their states
@@ -68,8 +68,7 @@ class Orchestrator:
             self.agent_dispatch[TaskType.FILTER] = self._run_filter_agent
         if self.analysis_agent:
             self.agent_dispatch[TaskType.SYNTHESIZE] = self._run_analysis_agent 
-        # PLAN and REPORT are handled differently (PLAN in start_job, REPORT is often implicit)
-        #self.agent_dispatch[TaskType.REPORT] = self._run_report_task # Placeholder report task
+        #Not initializing REPORT task here, it's handled in _run_research_flow
 
         logger.info(f"Agent dispatch map configured: {list(self.agent_dispatch.keys())}")
 
@@ -427,11 +426,32 @@ class Orchestrator:
             logger.info(f"[Job {job_id} | Task {task_id}] Filter task using results from {len(search_tasks)} completed search tasks with IDs: {search_task_ids}")
 
         # Call the actual filter agent run method
-        filter_result = await self.filtering_agent.run(
-            search_task_ids=search_task_ids, 
-            current_task_id=task_id, 
-            job_id=job_id
-        )
+        try:
+            filter_result = await self.filtering_agent.run(
+                search_task_ids=search_task_ids, 
+                current_task_id=task_id, 
+                job_id=job_id
+            )
+            
+            # Ensure filter_result is properly structured even if it's None or incomplete
+            if filter_result is None:
+                filter_result = {"filtered_results": [], "duplicates_removed": 0, "sources_analyzed_count": len(search_tasks)}
+            elif not isinstance(filter_result.get("filtered_results"), list):
+                filter_result["filtered_results"] = []
+                
+            # Log details about the filtering operation
+            logger.info(f"[Job {job_id} | Task {task_id}] Filter completed with {len(filter_result.get('filtered_results', []))} results, " 
+                        f"{filter_result.get('duplicates_removed', 0)} duplicates removed")
+        except Exception as e:
+            logger.error(f"[Job {job_id} | Task {task_id}] Error during filtering: {e}", exc_info=True)
+            # Create a fallback filter result
+            filter_result = {
+                "filtered_results": [],
+                "duplicates_removed": 0, 
+                "sources_analyzed_count": len(search_tasks),
+                "error": str(e),
+                "status": "error"
+            }
 
         # Broadcast summary after filter completes successfully 
         if filter_result and isinstance(filter_result, dict):
@@ -446,7 +466,7 @@ class Orchestrator:
                         for item in filtered_items[:5] if isinstance(item, dict)
                     ]
                 )
-            await self.broadcast_job_summary(summary)
+            #await self.broadcast_job_summary(summary)
         
         return filter_result
 
