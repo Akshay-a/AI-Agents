@@ -212,7 +212,7 @@ class SearchAgent:
              # This indicates an initialization problem. Attempt to use global instance as fallback.
              try:
                  # Dynamic import might hide dependency issues, use cautiously.
-                 from ..task_manager import task_manager # Adjusted import path assuming task_manager.py is one level up
+                 from ..task_manager import task_manager # Adjusted import path cause task_manager.py is one level up
                  if task_manager:
                       await task_manager.store_result(task_id, results)
                       logger.info(f"Stored {len(results)} processed results for task {task_id} using globally accessed TaskManager.")

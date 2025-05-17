@@ -96,8 +96,11 @@ class AnalysisAgent:
         # --- Calculate token counts first ---
         docs_with_tokens = []
         for doc in documents:
-            text = doc.get('extracted_text', '')
-            if not text: continue
+            # Check for both 'extracted_text' and 'text' keys to handle different formats
+            text = doc.get('extracted_text', doc.get('text', ''))
+            if not text:
+                logger.error(f"[Job {job_id} | Task {current_task_id}] Skipping doc {doc.get('url', 'N/A')} due to missing content.")
+                continue
             try:
                 token_count = self.llm_provider.count_tokens(text)
                 doc['token_count'] = token_count
@@ -110,35 +113,29 @@ class AnalysisAgent:
         topic_keywords = set(topic.lower().split()) # Very basic
         relevant_docs_intermediate = []
         for doc in docs_with_tokens:
-            text_lower = doc.get('extracted_text', '').lower()
+            # Check for both 'extracted_text' and 'text' keys
+            text_lower = doc.get('extracted_text', doc.get('text', '')).lower()
+            
             # Simple check: count topic keywords in text
             score = sum(1 for keyword in topic_keywords if keyword in text_lower)
             # Normalize score (optional, very crude)
             relevance_score = score / (len(topic_keywords) + 1e-6)
-
-            # --- Replace above with Embedding Similarity ---
-            # if self.embedding_model:
-            #     try:
-            #         topic_embedding = self.embedding_model.encode(topic)
-            #         # Encode snippet for speed
-            #         snippet = doc.get('extracted_text', '')[:1000] # Encode first ~250 tokens
-            #         doc_embedding = self.embedding_model.encode(snippet)
-            #         # Calculate cosine similarity (requires numpy or similar)
-            #         # relevance_score = util.cos_sim(topic_embedding, doc_embedding)[0][0].item()
-            #         relevance_score = 0.0 # Placeholder
-            #         logger.debug(f"Doc {doc.get('url', 'N/A')} embedding relevance: {relevance_score:.4f}")
-            #     except Exception as e:
-            #         logger.warning(f"Failed to calculate embedding relevance for {doc.get('url', 'N/A')}: {e}")
-            #         relevance_score = 0.0 # Default score if embedding fails
-            # else:
-            #     relevance_score = 0.5 # Default if no embedding model
-
-            if relevance_score >= RELEVANCE_THRESHOLD:
+            
+            # Use a lower threshold to avoid filtering out all documents
+            threshold = 0.1  # More permissive threshold
+            
+            if relevance_score >= threshold:
                  doc['relevance_score'] = relevance_score
                  relevant_docs_intermediate.append(doc)
             else:
-                 logger.info(f"[Job {job_id} | Task {current_task_id}] Filtering out doc {doc.get('url', 'N/A')} due to low relevance score ({relevance_score:.4f} < {RELEVANCE_THRESHOLD}).")
+                 logger.info(f"[Job {job_id} | Task {current_task_id}] Filtering out doc {doc.get('url', 'N/A')} due to low relevance score ({relevance_score:.4f} < {threshold}).")
 
+        # If no documents passed the relevance filter, use all documents
+        if not relevant_docs_intermediate:
+            logger.warning(f"[Job {job_id} | Task {current_task_id}] No documents passed relevance filter. Using all documents.")
+            for doc in docs_with_tokens:
+                doc['relevance_score'] = 0.1  # Assign a default score
+                relevant_docs_intermediate.append(doc)
 
         # --- Prioritization ---
         # Sort by relevance score (descending), maybe break ties with length or other factors
@@ -180,7 +177,9 @@ class AnalysisAgent:
         synthesis_input_parts = []
         # Add full text documents
         for doc in prompt_context_docs:
-            synthesis_input_parts.append(f"--- Source (Full Text): {doc.get('url', 'N/A')} ---\n\n{doc.get('extracted_text', '')}")
+            # Get text using either 'extracted_text' or 'text' key
+            text_content = doc.get('extracted_text', doc.get('text', ''))
+            synthesis_input_parts.append(f"--- Source (Full Text): {doc.get('url', 'N/A')} ---\n\n{text_content}")
 
         # Summarize overflow documents if any
         overflow_summaries: List[Tuple[str, str]] = [] # List of (url, summary)
@@ -255,32 +254,76 @@ class AnalysisAgent:
 
 
     async def _summarize_single_document(self, doc: Dict[str, Any], topic: str, job_id: str, parent_task_id: str) -> Optional[str]:
-         """Calls LLM to summarize a single document."""
-         text = doc.get('extracted_text', '')
+         """Summarizes a single document that didn't fit in the main context window."""
          url = doc.get('url', 'Unknown URL')
-         token_count = doc.get('token_count', 0)
-
-         if not text: return None
-
-         # Check if doc itself exceeds summarization context limit
-         if token_count > MAX_SUMMARY_INPUT_TOKENS:
-             logger.warning(f"[Job {job_id} | Task {parent_task_id}] Overflow document {url} ({token_count} tokens) is too large even for summarization ({MAX_SUMMARY_INPUT_TOKENS}). Skipping summarization.")
-             # TODO: Implement chunking within summarization if needed
-             return None # Skip summarization for this doc
-
-         summary_prompt = format_document_summary_prompt(topic=topic, document_text=text, url=url)
-         # Estimate prompt tokens to calculate max output for summary
-         summary_prompt_tokens = self.llm_provider.count_tokens(summary_prompt)
-         max_summary_output = MAX_SUMMARY_INPUT_TOKENS - summary_prompt_tokens - 100 # Buffer
-
-         if max_summary_output < 100: # Need some space for a meaningful summary
-              logger.warning(f"[Job {job_id} | Task {parent_task_id}] Summary prompt for {url} leaves too little output space ({max_summary_output} tokens). Skipping.")
-              return None
-
-         logger.info(f"[Job {job_id} | Task {parent_task_id}] Calling LLM to summarize overflow doc: {url}")
-         summary = await self.llm_provider.generate(
-             prompt=summary_prompt,
-             temperature=0.3, # Lower temp for factual summary
-             max_output_tokens=max_summary_output
-         )
-         return summary.strip() if summary else None
+         
+         # Get text content handling potential key differences
+         text_content = doc.get('extracted_text', doc.get('text', ''))
+         if not text_content:
+             logger.warning(f"[Job {job_id} | Task {parent_task_id}] Empty document content for {url}. Cannot summarize.")
+             return None
+         
+         # Chunk large texts if needed to fit LLM's context
+         tokens = doc.get('token_count', None)
+         if not tokens:
+             try:
+                 tokens = self.llm_provider.count_tokens(text_content)
+             except Exception as e:
+                 logger.warning(f"[Job {job_id} | Task {parent_task_id}] Token counting error for {url}: {e}")
+                 # Crude approximation
+                 tokens = len(text_content) // 4
+         
+         # Skip very small documents and just return the first paragraph
+         if tokens < 100:
+             # Return first paragraph or everything up to 100 words if there's no clear paragraph
+             for para_end in [2000, 500, 100]:
+                 first_para = text_content[:para_end].strip()
+                 if first_para:
+                     return first_para
+             return text_content
+         
+         # For large documents, use LLM to create a summarization
+         try:
+             if tokens > MAX_SUMMARY_INPUT_TOKENS:
+                 logger.info(f"[Job {job_id} | Task {parent_task_id}] Document {url} is too large ({tokens} tokens) even for summary call. Taking first chunk.")
+                 # If we're sophisticated, do a recursive approach or chunk and summarize
+                 # For simplicity: take beginning + end chunks
+                 first_chunk_size = MAX_SUMMARY_INPUT_TOKENS // 2
+                 first_chunk = text_content[:first_chunk_size]
+                 # Quick approx: get text from the end about 1/4 of the max allowed
+                 last_chunk_size = MAX_SUMMARY_INPUT_TOKENS // 4
+                 last_chunk = text_content[-last_chunk_size:] if len(text_content) > last_chunk_size else ""
+                 
+                 # String to indicate chunks were taken
+                 breakpoint_text = "\n\n[... Content omitted for length ...]\n\n"
+                 
+                 # Combine chunks for summarization
+                 partial_text = first_chunk + breakpoint_text + last_chunk
+                 
+                 # Token check
+                 partial_tokens = self.llm_provider.count_tokens(partial_text)
+                 if partial_tokens > MAX_SUMMARY_INPUT_TOKENS:
+                     # Just use first chunk then
+                     partial_text = first_chunk
+             else:
+                 partial_text = text_content
+             
+             summary_prompt = format_document_summary_prompt(
+                 topic=topic,
+                 url=url,
+                 document_text=partial_text
+             )
+             
+             summary = await self.llm_provider.generate(
+                 prompt=summary_prompt,
+                 temperature=0.3,  # Lower temp for summaries
+                 max_output_tokens=1024  # Limit summary length
+             )
+             
+             logger.info(f"[Job {job_id} | Task {parent_task_id}] Successfully summarized document {url}")
+             return summary.strip()
+             
+         except Exception as e:
+             logger.error(f"[Job {job_id} | Task {parent_task_id}] Error summarizing document {url}: {e}")
+             # Return a brief error note and the beginning of the text
+             return f"Error summarizing: {str(e)}. Beginning of content: " + text_content[:500]
