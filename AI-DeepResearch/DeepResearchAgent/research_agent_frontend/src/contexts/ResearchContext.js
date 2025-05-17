@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { startResearchJob, createWebSocketConnection } from '../services/api';
+import { startResearchJob, createWebSocketConnection, fetchHistory, fetchJobReport } from '../services/api';
 
 // Create the context
 const ResearchContext = createContext();
@@ -23,6 +23,10 @@ export const ResearchProvider = ({ children }) => {
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // connecting, connected, disconnected
   const [currentStatusMessage, setCurrentStatusMessage] = useState(''); // Track current job progress message
   
+  // New state for chat-like interface
+  const [currentChatMessages, setCurrentChatMessages] = useState([]);
+  const [historyList, setHistoryList] = useState([]);
+  
   // Use a ref for the WebSocket connection to avoid unnecessary re-renders
   const wsConnectionRef = useRef(null);
 
@@ -32,6 +36,27 @@ export const ResearchProvider = ({ children }) => {
 
   const statusRef = useRef(status);
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  // Fetch history on initial load
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await fetchHistory();
+        // Ensure all history items have a valid queryTitle
+        const sanitizedHistory = history.map(item => ({
+          ...item,
+          queryTitle: item.queryTitle || "Untitled Research"
+        }));
+        setHistoryList(sanitizedHistory);
+      } catch (error) {
+        console.error('Failed to load history:', error);
+        // Set empty history list on error instead of leaving it undefined
+        setHistoryList([]);
+      }
+    };
+    
+    loadHistory();
+  }, []);
 
   // Handle WebSocket messages using useCallback to avoid recreating the function on every render
   const handleWebSocketMessage = useCallback((data) => {
@@ -125,6 +150,16 @@ export const ResearchProvider = ({ children }) => {
             } else if (messageData.status === 'FAILED') {
               setStatus('failed');
               setError(messageData.detail || 'Research job failed');
+              
+              // Add error message to chat
+              setCurrentChatMessages(prev => [
+                ...prev,
+                { 
+                  type: 'ai', 
+                  content: messageData.detail || 'Research job failed', 
+                  isError: true 
+                }
+              ]);
             } else if (messageData.status === 'RUNNING') {
               setStatus('researching');
               // Clear any previous errors when job starts running
@@ -154,7 +189,22 @@ export const ResearchProvider = ({ children }) => {
             console.log('Setting final report:', reportMarkdown.slice(0, 100) + '...');
             console.log('Final report length:', reportMarkdown.length);
             setReport(reportMarkdown);
-            setStatus('completed'); // Ensure status is completed when report is set
+            setStatus('completed');
+            
+            // Add report to chat messages
+            setCurrentChatMessages(prev => [
+              ...prev, 
+              { type: 'ai', content: reportMarkdown }
+            ]);
+            
+            // Update history list with the new job
+            const newHistoryItem = {
+              jobId: jobIdInMessage,
+              queryTitle: query || "Untitled Research",
+              timestamp: new Date().toISOString()
+            };
+            
+            setHistoryList(prev => [newHistoryItem, ...prev]);
           } else {
             console.error('Report markdown is invalid:', reportMarkdown);
             if (jobIdRef.current && jobIdInMessage === jobIdRef.current) {
@@ -166,6 +216,16 @@ export const ResearchProvider = ({ children }) => {
           if (jobIdRef.current && jobIdInMessage === jobIdRef.current) { // Only set error if it's for the current job
             setError('Failed to process research report');
             setStatus('failed');
+            
+            // Add error to chat
+            setCurrentChatMessages(prev => [
+              ...prev,
+              { 
+                type: 'ai', 
+                content: 'Failed to process research report', 
+                isError: true 
+              }
+            ]);
           }
         }
         break;
@@ -178,6 +238,16 @@ export const ResearchProvider = ({ children }) => {
             console.log('Setting error state from job_failed message:', errorMessage);
             setError(errorMessage);
             setStatus('failed');
+            
+            // Add error to chat
+            setCurrentChatMessages(prev => [
+              ...prev,
+              { 
+                type: 'ai', 
+                content: errorMessage, 
+                isError: true 
+              }
+            ]);
         } else {
             console.log(`job_failed message for ${jobIdInMessage} ignored as it doesn't match current job ${jobIdRef.current}`);
         }
@@ -274,6 +344,12 @@ export const ResearchProvider = ({ children }) => {
       setTaskErrors({});
       setReport('');
       
+      // Add user query to chat messages
+      setCurrentChatMessages(prev => [
+        ...prev,
+        { type: 'user', content: researchQuery }
+      ]);
+      
       // Ensure WebSocket connection is active
       if (connectionStatus !== 'connected' && wsConnectionRef.current) {
         wsConnectionRef.current.reconnect();
@@ -295,6 +371,93 @@ export const ResearchProvider = ({ children }) => {
       console.error('Failed to start research:', error);
       setError(error.message || 'Failed to start research');
       setStatus('failed');
+      
+      // Add error to chat messages
+      setCurrentChatMessages(prev => [
+        ...prev,
+        { 
+          type: 'ai', 
+          content: error.message || 'Failed to start research', 
+          isError: true 
+        }
+      ]);
+    }
+  };
+
+  // Clear current chat and reset state
+  const clearCurrentChat = () => {
+    setQuery('');
+    setJobId(null);
+    setPlan([]);
+    setCompletedTaskIds([]);
+    setTaskStatuses({});
+    setTaskErrors({});
+    setReport('');
+    setStatus('idle');
+    setError(null);
+    setCurrentStatusMessage('');
+    setCurrentChatMessages([]);
+  };
+  
+  // Load a history item by job ID
+  const loadHistoryItem = async (jobId) => {
+    try {
+      // First find the history item to get the query
+      const historyItem = historyList.find(item => item.jobId === jobId);
+      
+      if (!historyItem) {
+        throw new Error('History item not found');
+      }
+      
+      // Ensure queryTitle is valid
+      const safeQueryTitle = historyItem.queryTitle || "Untitled Research";
+      
+      // Set the query from history
+      setQuery(safeQueryTitle);
+      
+      // Reset other state
+      setJobId(jobId);
+      setPlan([]);
+      setCompletedTaskIds([]);
+      setTaskStatuses({});
+      setTaskErrors({});
+      setStatus('loading');
+      setError(null);
+      
+      // Start with just the user query in chat
+      setCurrentChatMessages([
+        { type: 'user', content: safeQueryTitle }
+      ]);
+      
+      // Fetch the report for this job
+      const report = await fetchJobReport(jobId);
+      
+      if (report) {
+        setReport(report);
+        setStatus('completed');
+        
+        // Add report to chat messages
+        setCurrentChatMessages(prev => [
+          ...prev,
+          { type: 'ai', content: report }
+        ]);
+      } else {
+        throw new Error('Failed to load report');
+      }
+    } catch (error) {
+      console.error('Failed to load history item:', error);
+      setError(error.message || 'Failed to load history item');
+      setStatus('failed');
+      
+      // Add error to chat messages
+      setCurrentChatMessages(prev => [
+        ...prev,
+        { 
+          type: 'ai', 
+          content: error.message || 'Failed to load history item', 
+          isError: true 
+        }
+      ]);
     }
   };
 
@@ -334,7 +497,11 @@ export const ResearchProvider = ({ children }) => {
     error,
     connectionStatus,
     currentStatusMessage,
+    currentChatMessages,
+    historyList,
     startResearch,
+    clearCurrentChat,
+    loadHistoryItem,
     isTaskCompleted,
     getTaskStatus,
     getTaskError,

@@ -1,0 +1,82 @@
+.query-input-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #f9f9fa;
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  z-index: 10;
+}
+
+.query-input-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: white;
+  border-radius: 24px;
+  padding: 6px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  transition: box-shadow 0.2s ease;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.query-input-form:focus-within {
+  box-shadow: 0 1px 6px rgba(26, 115, 232, 0.2);
+  border-color: #1a73e8;
+}
+
+.query-input {
+  flex: 1;
+  border: none;
+  padding: 10px 0;
+  font-size: 16px;
+  outline: none;
+  background: none;
+  color: #333;
+}
+
+.query-input::placeholder {
+  color: #999;
+}
+
+.send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background-color: #1a73e8;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+}
+
+.send-button:hover {
+  background-color: #1765cc;
+}
+
+.send-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.button-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+} 

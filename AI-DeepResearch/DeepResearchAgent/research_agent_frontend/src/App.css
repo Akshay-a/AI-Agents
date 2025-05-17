@@ -1,8 +1,6 @@
 /* src/App.css */
-body, html, #root {
+body {
   margin: 0;
-  padding: 0;
-  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -10,16 +8,48 @@ body, html, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Main app layout */
 .app-container {
   display: flex;
-  height: 100vh; /* Full viewport height */
+  height: 100vh;
+  overflow: hidden;
 }
 
 .content-wrapper {
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Takes up remaining space next to sidebar */
-  height: 100vh; /* Full viewport height */
+  flex-grow: 1;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Prevent text selection in UI elements */
+.sidebar, .sidebar *, .query-input-container {
+  user-select: none;
+}
+
+/* Allow text selection in messages from AI */
+.ai-message .message-content {
+  user-select: text;
 }
 
 /* Ensure MainContent takes available space and Footer stays at bottom */

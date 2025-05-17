@@ -36,6 +36,48 @@ export const startResearchJob = async (query, clientId) => {
 };
 
 /**
+ * Fetch the list of past research jobs
+ * @returns {Promise<Array>} - The list of history items, each containing jobId and queryTitle
+ */
+export const fetchHistory = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/jobs`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to fetch job history: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching job history:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch the report for a specific job
+ * @param {string} jobId - The ID of the job to fetch the report for
+ * @returns {Promise<string>} - The Markdown report for the job
+ */
+export const fetchJobReport = async (jobId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/report`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to fetch job report: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.report_markdown;
+  } catch (error) {
+    console.error(`Error fetching report for job ${jobId}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Create a WebSocket connection to the backend with auto-reconnect functionality
  * @param {string} clientId - Unique client identifier
  * @param {Function} onMessage - Callback function for handling messages
