@@ -77,44 +77,6 @@ class AgnoAgent:
 
         self.agent.cli_app(markdown=True)
         
-    def process_query(self, query: str) -> str:
-        """
-        Process a user query and generate a response using the Agno framework.
-        
-        Args:
-            query (str): The user's query or input
-            
-        Returns:
-            str: The agent's response
-        """
-        logger.info(f"Processing query: {query}")
-        
-        try:
-            # Add the query to the conversation history
-            self.conversation_history.append({"role": "user", "content": query})
-            
-            # Get response from the Agno agent
-            response = "self.agent."
-            
-            # Add the response to the conversation history
-            if response:
-                self.conversation_history.append({"role": "assistant", "content": response})
-                
-            return response
-        except Exception as e:
-            logger.error(f"Error processing query: {e}")
-            return "I'm sorry, I encountered an error processing your request. Please try again."
-        
-    def reset_conversation(self):
-        """
-        Reset the conversation state.
-        """
-        logger.info("Resetting conversation")
-        self.conversation_history = []
-        self.conversation_id = None
-        
-        # Re-initialize the agent with a new conversation ID
-        self.__init__(api_key=self.api_key) 
 
 if __name__ == "__main__":
     typer.run(AgnoAgent)
