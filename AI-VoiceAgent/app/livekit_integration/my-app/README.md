@@ -8,6 +8,13 @@ DEEPSEEK_API_KEY=<To use other providers, press Enter for now and edit .env.loca
 GROQ_API_KEY=<To use other providers, press Enter for now and edit .env.local>
 ZAPIER_MCP_SERVER=<To use other providers, press Enter for now and edit .env.local>
 
+
+Set up the LiveKit Room via api and once its working we can directly run the agent class in console mode -> 
+Run the agent.py in console mode:
+"python agent.py console"
+
+Once the Program is booted , the agent starts the Conversation saying it has calender access and you can talk to it and set up events in your calender
+
 Below is mermaid diagram for Customer and AI agent interaction:
 
 sequenceDiagram
