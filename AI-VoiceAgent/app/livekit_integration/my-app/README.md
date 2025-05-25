@@ -1,3 +1,13 @@
+Required variables to run this program:
+LIVEKIT_URL=<your LiveKit server URL>
+LIVEKIT_API_KEY=<your API Key>
+LIVEKIT_API_SECRET=<your API Secret>
+DEEPGRAM_API_KEY=<To use other providers, press Enter for now and edit .env.local>
+CARTESIA_API_KEY=<To use other providers, press Enter for now and edit .env.local>
+DEEPSEEK_API_KEY=<To use other providers, press Enter for now and edit .env.local>
+GROQ_API_KEY=<To use other providers, press Enter for now and edit .env.local>
+ZAPIER_MCP_SERVER=<To use other providers, press Enter for now and edit .env.local>
+
 Below is mermaid diagram for Customer and AI agent interaction:
 
 sequenceDiagram
