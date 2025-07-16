@@ -64,7 +64,7 @@ class AgnoAgent:
             """,
             tools=[
                 DuckDuckGoTools(),  # Web search capability
-                ReasoningTools(add_instructions=True),  # Enhanced reasoning capability
+                ReasoningTools(add_instructions=False),  # Enhanced reasoning capability
             ],
             show_tool_calls=False,  # Hide tool calls in the response for cleaner voice output
             markdown=False,  # Avoid markdown for voice responses
