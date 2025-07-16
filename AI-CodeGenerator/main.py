@@ -1,7 +1,7 @@
 import sys
 import os
 import logging
-import config # Import config first
+import config 
 from utils import setup_logging, save_code_to_file
 import llm_handler
 import docker_runner
@@ -16,7 +16,7 @@ def run_agent():
 
     # --- Pre-run Checks ---
     if not config.API_KEY:
-        logger.critical("❌ GOOGLE_API_KEY not found. Please set it in .env or environment variables.")
+        logger.critical("❌ GOOGLE_API_KEY not found.set it in .env or environment variables.")
         sys.exit(1)
     logger.info("✅ Google API Key found.")
 
