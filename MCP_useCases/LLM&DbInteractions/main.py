@@ -41,8 +41,5 @@ def main():
             break
         except Exception as e:
             print(f"\nAn unexpected error occurred: {e}")
-            # Optionally, re-initialize the agent or just continue
-            # break # Uncomment to stop on any error
-
 if __name__ == "__main__":
     main()
