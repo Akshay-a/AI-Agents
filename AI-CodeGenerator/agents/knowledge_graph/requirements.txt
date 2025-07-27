@@ -1,0 +1,10 @@
+# Core dependencies for simple vector-based code analysis
+numpy>=1.21.0
+scikit-learn>=1.0.0
+
+# Optional: Better embeddings (fallback to scikit-learn if not available)
+sentence-transformers>=2.0.0
+
+# Development and testing
+pytest>=6.0.0
+pytest-asyncio>=0.20.0 
