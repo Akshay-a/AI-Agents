@@ -3,36 +3,16 @@ Simple Vector-Based Knowledge Graph Agent Module
 Provides code analysis and semantic search for cloned repositories.
 """
 
-from .knowledge_graph_agent import KnowledgeGraphAgent
-from .schema import (
-    CodeChunk, ChunkType, Language, ChunkingResult, SearchResult, 
-    ChunkingConfig, detect_language
-)
-from .chunker import CodeChunker
-from .vector_store import VectorStore, SessionVectorStore
-from .query_engine import QueryEngine, BatchQueryEngine
+from .knowledge_graph_agent import KnowledgeGraphAgent, ChunkType, Language, CodeChunk, SearchResult, detect_language
 
 __all__ = [
-    # Main agent
     'KnowledgeGraphAgent',
-    
-    # Core schema components
-    'CodeChunk',
-    'ChunkType', 
+    'ChunkType',
     'Language',
-    'ChunkingResult',
+    'CodeChunk',
     'SearchResult',
-    'ChunkingConfig',
-    'detect_language',
-    
-    # Processing components  
-    'CodeChunker',
-    'VectorStore',
-    'SessionVectorStore',
-    'QueryEngine',
-    'BatchQueryEngine'
+    'detect_language'
 ]
 
-# Version info
-__version__ = "2.0.0"
-__description__ = "Simple vector-based code analysis for AI agents" 
+__version__ = "3.0.0"
+__description__ = "Simplified Chroma-based code analysis agent" 
