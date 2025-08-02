@@ -1,37 +1,79 @@
-"""
-Simple Vector-Based Knowledge Graph Agent
-Replaces complex graph analysis with efficient vector search for code understanding.
-"""
-
 import os
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
+import chromadb
+from chromadb.utils import embedding_functions
+from transformers import AutoTokenizer, AutoModel
+import torch
 
-from ..base.agent_interface import BaseAgent, AgentInput, AgentOutput, AgentStatus
-from .chunker import CodeChunker, ChunkingConfig
-from .vector_store import VectorStore, SessionVectorStore
-from .query_engine import QueryEngine, BatchQueryEngine
-from .schema import ChunkingResult, Language, ChunkType
+from agents.base.agent_interface import BaseAgent, AgentInput, AgentOutput, AgentStatus
 
+
+class ChunkType:
+    FILE = "file"
+    BLOCK = "block"
+
+class Language:
+    PYTHON = "python"
+    JAVASCRIPT = "javascript"
+    # Add other languages as needed
+    UNKNOWN = "unknown"
+
+class CodeChunk:
+    def __init__(self, text: str, file_path: str, chunk_type: str, language: str, start_line: int = None, end_line: int = None, name: Optional[str] = None):
+        self.text = text
+        self.file_path = file_path
+        self.chunk_type = chunk_type
+        self.language = language
+        self.start_line = start_line
+        self.end_line = end_line
+        self.name = name
+
+    def to_dict(self):
+        return {
+            "text": self.text,
+            "file_path": self.file_path,
+            "chunk_type": self.chunk_type,
+            "language": self.language,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "name": self.name
+        }
+
+class SearchResult:
+    def __init__(self, chunk: CodeChunk, similarity: float):
+        self.chunk = chunk
+        self.similarity = similarity
+
+    def to_dict(self):
+        return {
+            "chunk": self.chunk.to_dict(),
+            "similarity": self.similarity
+        }
+
+def detect_language(file_path: str) -> str:
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == '.py':
+        return Language.PYTHON
+    elif ext in ['.js', '.ts']:
+        return Language.JAVASCRIPT
+    return Language.UNKNOWN
 
 class KnowledgeGraphAgent(BaseAgent):
-    """
-    Plain embedding of a file to generate semantic understanding of code
-    """
-    
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(agent_id="knowledge_graph_agent", config=config)
+        self.logger = logging.getLogger(__name__)
+        self.chroma_client = chromadb.Client()
         
-        # Initialize components
-        self.chunking_config = ChunkingConfig()
-        self.chunker = CodeChunker(self.chunking_config)
-        self.session_stores = SessionVectorStore()
+        # Set up enhanced logging
+        self.logger.setLevel(logging.DEBUG)
         
-        # Agent state
+        # Initialize Jina embedding model
+        self._initialize_embedding_model()
         self.supported_operations = [
             'analyze_repository',
-            'search_code', 
+            'search_code',
             'find_similar',
             'find_functions',
             'find_classes',
@@ -39,282 +81,399 @@ class KnowledgeGraphAgent(BaseAgent):
             'get_statistics',
             'cleanup_session'
         ]
-        
-        self.logger.info("Initialized Simple Vector-Based Knowledge Graph Agent")
     
+    def _initialize_embedding_model(self):
+        """Initialize Jina embedding model as requested"""
+        try:
+            # Using Jina embedding model as originally requested
+            self.embedding_model_name = "jinaai/jina-embeddings-v2-base-code"
+            self.tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
+            self.model = AutoModel.from_pretrained(self.embedding_model_name)
+            self.logger.info(f"Successfully loaded Jina embedding model: {self.embedding_model_name}")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize Jina embedding model: {e}")
+            # Fallback to CodeBERT if Jina fails
+            try:
+                self.embedding_model_name = "microsoft/codebert-base"
+                self.tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
+                self.model = AutoModel.from_pretrained(self.embedding_model_name)
+                self.logger.info(f"Fallback: Successfully loaded CodeBERT model: {self.embedding_model_name}")
+            except Exception as fallback_e:
+                self.logger.error(f"Failed to initialize fallback model: {fallback_e}")
+                raise RuntimeError(f"Failed to initialize any embedding model. Jina error: {e}, Fallback error: {fallback_e}")
     def validate_input(self, agent_input: AgentInput) -> bool:
-        """Validate input for supported operations"""
-        data = agent_input.data
-        operation = data.get('operation')
-        
-        if operation not in self.supported_operations:
-            self.logger.error(f"Unsupported operation: {operation}")
-            return False
-        
-        # Operation-specific validation
-        if operation == 'analyze_repository':
-            if 'repository_path' not in data:
-                self.logger.error("Missing repository_path for analyze_repository")
-                return False
-            
-            repo_path = data['repository_path']
-            if not os.path.exists(repo_path):
-                self.logger.error(f"Repository path does not exist: {repo_path}")
-                return False
-        
-        elif operation in ['search_code', 'find_similar', 'find_functions', 'find_classes', 'find_patterns']:
-            if 'query' not in data:
-                self.logger.error(f"Missing query for {operation}")
-                return False
-        
         return True
-    
+    def embed_text(self, text: str) -> List[float]:
+        """Generate embeddings for text using Jina model with proper error handling"""
+        try:
+            if not hasattr(self, 'tokenizer') or not hasattr(self, 'model'):
+                raise RuntimeError("Embedding model not properly initialized")
+            
+            # Use transformers with Jina model
+            inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=8192)
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+            embedding = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
+            
+            self.logger.debug(f"Generated embedding of dimension: {len(embedding)}")
+            return embedding
+                
+        except Exception as e:
+            self.logger.error(f"Error generating embedding for text (length {len(text)}): {e}")
+            raise RuntimeError(f"Failed to generate embedding: {e}")
+    def chunk_file(self, file_path: str, rel_path: str) -> List[CodeChunk]:
+        """Enhanced chunking with comprehensive debug logging"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            self.logger.error(f"Failed to read file {file_path}: {e}")
+            return []
+            
+        lines = content.split('\n')
+        file_size_bytes = len(content.encode('utf-8'))
+        
+        self.logger.info(f"Processing file: {rel_path}")
+        self.logger.info(f"  - Lines: {len(lines)}")
+        self.logger.info(f"  - Size: {file_size_bytes:,} bytes ({file_size_bytes/1024:.1f} KB)")
+        self.logger.info(f"  - Language: {detect_language(file_path)}")
+        
+        if len(lines) > 5000:
+            self.logger.warning(f"File {rel_path} has {len(lines)} lines (>5000), creating TODO chunk")
+            return [CodeChunk(
+                text=f"# TODO: File too large - {len(lines)} lines\n# File: {rel_path}\n# Consider implementing large file chunking strategy", 
+                file_path=rel_path, 
+                chunk_type=ChunkType.FILE, 
+                language=detect_language(file_path), 
+                name=os.path.basename(rel_path)
+            )]
+            
+        chunks = []
+        # Improved chunking strategy
+        chunk_size = 150  # Smaller chunks for better granularity
+        overlap = 30      # Larger overlap for better context
+        
+        self.logger.debug(f"Chunking strategy: chunk_size={chunk_size}, overlap={overlap}")
+        
+        for i in range(0, len(lines), chunk_size - overlap):
+            end = min(i + chunk_size, len(lines))
+            chunk_lines = lines[i:end]
+            chunk_text = '\n'.join(chunk_lines)
+            
+            # Skip very small chunks (less than 10 lines) unless it's the last chunk
+            if len(chunk_lines) < 10 and i + chunk_size < len(lines):
+                self.logger.debug(f"Skipping small chunk at lines {i+1}-{end} ({len(chunk_lines)} lines)")
+                continue
+                
+            chunk = CodeChunk(
+                text=chunk_text,
+                file_path=rel_path,
+                chunk_type=ChunkType.BLOCK,
+                language=detect_language(file_path),
+                start_line=i + 1,
+                end_line=end
+            )
+            chunks.append(chunk)
+            
+            self.logger.debug(f"Created chunk {len(chunks)}: lines {i+1}-{end} ({len(chunk_lines)} lines, {len(chunk_text)} chars)")
+        
+        self.logger.info(f"  - Generated {len(chunks)} chunks for {rel_path}")
+        return chunks
+
+    def analyze_repository(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """Analyze repository with comprehensive debug logging and improved file discovery"""
+        try:
+            repo_path = data['repository_path']
+            
+            if not os.path.exists(repo_path):
+                raise ValueError(f"Repository path does not exist: {repo_path}")
+            
+            self.logger.info(f"=== REPOSITORY ANALYSIS START ===")
+            self.logger.info(f"Repository path: {repo_path}")
+            self.logger.info(f"Session ID: {session_id}")
+            
+            # Enhanced file discovery with debug logging
+            code_files = []
+            all_files = []
+            supported_extensions = ('.py', '.js', '.ts', '.java', '.cpp', '.c', '.h', '.go', '.rs', '.rb', '.php')
+            
+            for root, dirs, files in os.walk(repo_path):
+                # Skip .git directories
+                dirs[:] = [d for d in dirs if d != '.git']
+                
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, repo_path)
+                    all_files.append((file_path, rel_path))
+                    
+                    if file.endswith(supported_extensions):
+                        file_size = os.path.getsize(file_path)
+                        code_files.append((file_path, rel_path, file_size))
+                        self.logger.debug(f"Found code file: {rel_path} ({file_size:,} bytes)")
+            
+            self.logger.info(f"Repository scan complete:")
+            self.logger.info(f"  - Total files: {len(all_files)}")
+            self.logger.info(f"  - Code files: {len(code_files)}")
+            self.logger.info(f"  - Supported extensions: {supported_extensions}")
+            
+            if not code_files:
+                self.logger.warning("No supported code files found!")
+                self.logger.info("Files found in repository:")
+                for file_path, rel_path in all_files[:10]:  # Show first 10 files
+                    self.logger.info(f"  - {rel_path}")
+                return {"error": "No supported code files found in repository", "total_files": len(all_files)}
+            
+            # Create collection
+            try:
+                collection = self.chroma_client.get_or_create_collection(name=session_id)
+                self.logger.info(f"Created/accessed ChromaDB collection: {session_id}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to create collection: {e}")
+            
+            total_chunks = 0
+            failed_files = []
+            file_chunk_counts = {}
+            
+            self.logger.info(f"=== PROCESSING {len(code_files)} CODE FILES ===")
+            
+            for file_path, rel_path, file_size in code_files:
+                try:
+                    self.logger.info(f"\n--- Processing file {total_chunks + 1}/{len(code_files)}: {rel_path} ---")
+                    
+                    chunks = self.chunk_file(file_path, rel_path)
+                    file_chunk_counts[rel_path] = len(chunks)
+                    
+                    successful_chunks = 0
+                    for idx, chunk in enumerate(chunks):
+                        try:
+                            self.logger.debug(f"Generating embedding for chunk {idx+1}/{len(chunks)} in {rel_path}")
+                            embedding = self.embed_text(chunk.text)
+                            
+                            metadata_dict = {k: v for k, v in chunk.to_dict().items() if k != "text" and v is not None}
+                            
+                            chunk_id = f"{rel_path}_{idx}"
+                            collection.add(
+                                ids=[chunk_id],
+                                embeddings=[embedding],
+                                metadatas=[metadata_dict],
+                                documents=[chunk.text]
+                            )
+                            successful_chunks += 1
+                            
+                        except Exception as e:
+                            self.logger.error(f"Failed to process chunk {idx} in {rel_path}: {e}")
+                            continue
+                    
+                    total_chunks += successful_chunks
+                    self.logger.info(f"Successfully processed {successful_chunks}/{len(chunks)} chunks from {rel_path}")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to process file {file_path}: {e}")
+                    failed_files.append(rel_path)
+                    continue
+            
+            self.logger.info(f"\n=== REPOSITORY ANALYSIS COMPLETE ===")
+            self.logger.info(f"Total chunks created: {total_chunks}")
+            self.logger.info(f"Files processed successfully: {len(code_files) - len(failed_files)}/{len(code_files)}")
+            
+            if file_chunk_counts:
+                self.logger.info(f"Chunk distribution by file:")
+                for file, chunk_count in file_chunk_counts.items():
+                    self.logger.info(f"  - {file}: {chunk_count} chunks")
+            
+            result = {
+                "total_chunks": total_chunks, 
+                "session_id": session_id,
+                "files_processed": len(code_files) - len(failed_files),
+                "total_files_found": len(code_files),
+                "chunk_distribution": file_chunk_counts
+            }
+            
+            if failed_files:
+                result["warnings"] = f"Failed to process {len(failed_files)} files"
+                result["failed_files"] = failed_files
+                self.logger.warning(f"Failed to process files: {failed_files}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Repository analysis failed: {e}")
+            import traceback
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            return {"error": f"Repository analysis failed: {str(e)}"}
+
+    def search_code(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """Search code with proper error handling"""
+        try:
+            query = data['query']
+            max_results = data.get('max_results', 10)
+            
+            if not query or not query.strip():
+                return {"error": "Query cannot be empty"}
+            
+            try:
+                collection = self.chroma_client.get_collection(name=session_id)
+            except Exception as e:
+                return {"error": f"Session not found or invalid: {session_id}"}
+            
+            try:
+                query_embedding = self.embed_text(query)
+            except Exception as e:
+                return {"error": f"Failed to generate query embedding: {e}"}
+            
+            try:
+                results = collection.query(query_embeddings=[query_embedding], n_results=max_results)
+            except Exception as e:
+                return {"error": f"Failed to search collection: {e}"}
+            
+            search_results = []
+            for i in range(len(results['ids'][0])):
+                try:
+                    metadata = results['metadatas'][0][i]
+                    text = results['documents'][0][i]
+                    distance = results['distances'][0][i]
+                    
+                    # Create chunk dict with text included
+                    chunk_dict = {
+                        "text": text,
+                        "file_path": metadata.get("file_path"),
+                        "chunk_type": metadata.get("chunk_type"),
+                        "language": metadata.get("language"),
+                        "start_line": metadata.get("start_line"),
+                        "end_line": metadata.get("end_line"),
+                        "name": metadata.get("name")
+                    }
+                    
+                    similarity = max(0, 1 - distance)  # Convert distance to similarity, ensure non-negative
+                    search_results.append({"chunk": chunk_dict, "similarity": similarity})
+                except Exception as e:
+                    self.logger.warning(f"Failed to process search result {i}: {e}")
+                    continue
+            
+            return {"results": search_results}
+            
+        except Exception as e:
+            self.logger.error(f"Code search failed: {e}")
+            return {"error": f"Code search failed: {str(e)}"}
+    #Finds a reference match for the query, then searches for code similar to that reference.
+    def find_similar(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        query = data['query']
+        max_results = data.get('max_results', 10)
+        collection = self.chroma_client.get_collection(name=session_id)
+        query_embedding = self.embed_text(query)
+        results = collection.query(query_embeddings=[query_embedding], n_results=max_results)
+        # For similarity, perhaps find top match and then query similar to its embedding
+        if results['ids'][0]:
+            ref_id = results['ids'][0][0]
+            ref_embedding = collection.get(ids=[ref_id], include=['embeddings'])['embeddings'][0]
+            sim_results = collection.query(query_embeddings=[ref_embedding], n_results=max_results)
+            search_results = [self._result_to_dict(sim_results, i) for i in range(len(sim_results['ids'][0]))]
+            return {"results": search_results}
+        return {"results": []}
+
+    def find_functions(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        query = data['query']
+        max_results = data.get('max_results', 10)
+        collection = self.chroma_client.get_collection(name=session_id)
+        query_embedding = self.embed_text(query)
+        results = collection.query(query_embeddings=[query_embedding], n_results=max_results, where={"chunk_type": "function"})  # Assuming we add chunk_type metadata
+        search_results = [self._result_to_dict(results, i) for i in range(len(results['ids'][0]))]
+        return {"results": search_results}
+
+    def find_classes(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        query = data['query']
+        max_results = data.get('max_results', 10)
+        collection = self.chroma_client.get_collection(name=session_id)
+        query_embedding = self.embed_text(query)
+        results = collection.query(query_embeddings=[query_embedding], n_results=max_results, where={"chunk_type": "class"})
+        search_results = [self._result_to_dict(results, i) for i in range(len(results['ids'][0]))]
+        return {"results": search_results}
+    #TODO - to improve this more
+    def find_patterns(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        query = data['query']
+        max_results = data.get('max_results', 10)
+        collection = self.chroma_client.get_collection(name=session_id)
+        query_embedding = self.embed_text(query)
+        results = collection.query(query_embeddings=[query_embedding], n_results=max_results)
+        search_results = [self._result_to_dict(results, i) for i in range(len(results['ids'][0]))]
+        return {"results": search_results}
+    #TODO - to define what more to need apart from total chunks in the RAG
+    def get_statistics(self, session_id: str) -> Dict[str, Any]:
+        try:
+            collection = self.chroma_client.get_collection(name=session_id)
+            return {"total_chunks": collection.count()}
+        except:
+            return {"error": "Session not found"}
+
+    def cleanup_session(self, session_id: str) -> Dict[str, Any]:
+        self.chroma_client.delete_collection(name=session_id)
+        return {"message": "Session cleaned"}
+
+    def _result_to_dict(self, results, i):
+        metadata = results['metadatas'][0][i]
+        text = results['documents'][0][i]
+        similarity = 1 - results['distances'][0][i]
+        chunk_dict = {
+            "text": text,
+            "file_path": metadata.get("file_path"),
+            "chunk_type": metadata.get("chunk_type"),
+            "language": metadata.get("language"),
+            "start_line": metadata.get("start_line"),
+            "end_line": metadata.get("end_line"),
+            "name": metadata.get("name")
+        }
+        return {"chunk": chunk_dict, "similarity": similarity}
+
     def process(self, agent_input: AgentInput) -> AgentOutput:
-        """Process the agent input and return results"""
-        start_time = agent_input.timestamp
+        start_time = datetime.now()
         operation = agent_input.data.get('operation')
         session_id = agent_input.session_id
         
-        self.logger.info(f"Processing {operation} for session {session_id}")
-        
         try:
-            # Route to appropriate handler
             if operation == 'analyze_repository':
-                result = self._analyze_repository(agent_input.data, session_id)
+                result = self.analyze_repository(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'search_code':
-                result = self._search_code(agent_input.data, session_id)
+                result = self.search_code(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'find_similar':
-                result = self._find_similar(agent_input.data, session_id)
+                result = self.find_similar(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'find_functions':
-                result = self._find_functions(agent_input.data, session_id)
+                result = self.find_functions(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'find_classes':
-                result = self._find_classes(agent_input.data, session_id)
+                result = self.find_classes(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'find_patterns':
-                result = self._find_patterns(agent_input.data, session_id)
+                result = self.find_patterns(agent_input.data, session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'get_statistics':
-                result = self._get_statistics(session_id)
+                result = self.get_statistics(session_id)
+                status = AgentStatus.ERROR if 'error' in result else AgentStatus.SUCCESS
             elif operation == 'cleanup_session':
-                result = self._cleanup_session(session_id)
+                result = self.cleanup_session(session_id)
+                status = AgentStatus.SUCCESS
             else:
-                raise ValueError(f"Unknown operation: {operation}")
-            
-            return self._create_success_output(session_id, start_time, result)
-            
+                result = {"error": f"Unsupported operation: {operation}"}
+                status = AgentStatus.ERROR
+                
         except Exception as e:
-            self.logger.error(f"Error processing {operation}: {str(e)}")
-            return self._create_error_output(session_id, start_time, str(e))
-    
-    def _analyze_repository(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Analyze a repository and create vector embeddings"""
-        repository_path = data['repository_path']
+            self.logger.error(f"Unexpected error in operation '{operation}': {e}")
+            result = {"error": f"Unexpected error: {str(e)}"}
+            status = AgentStatus.ERROR
         
-        self.logger.info(f"Analyzing repository: {repository_path}")
-        
-        # Chunk the repository
-        chunking_result = self.chunker.chunk_repository(repository_path)
-        
-        # Get or create vector store for this session
-        vector_store = self.session_stores.get_store(session_id)
-        
-        # Generate embeddings
-        vector_store.add_chunks(chunking_result.chunks)
-        
-        self.logger.info(f"Analysis complete: {chunking_result.summary()}")
-        
-        return {
-            'repository_path': repository_path,
-            'analysis_summary': chunking_result.summary(),
-            'statistics': {
-                'total_files': chunking_result.total_files,
-                'total_lines': chunking_result.total_lines,
-                'total_chunks': len(chunking_result.chunks),
-                'language_distribution': {lang.value: count for lang, count in chunking_result.language_stats.items()},
-                'chunk_type_distribution': {chunk_type.value: count for chunk_type, count in chunking_result.chunk_stats.items()},
-            },
-            'ready_for_search': True,
-            'session_id': session_id
-        }
-    
-    def _search_code(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Perform semantic code search"""
-        query = data['query']
-        max_results = data.get('max_results', 10)
-        filters = data.get('filters', {})
-        
-        # Get vector store and query engine
-        vector_store = self.session_stores.get_store(session_id)
-        query_engine = QueryEngine(vector_store)
-        
-        # Perform search
-        results = query_engine.search(query, max_results, filters)
-        
-        # Convert results to serializable format
-        search_results = [result.to_dict() for result in results]
-        
-        return {
-            'query': query,
-            'results': search_results,
-            'total_results': len(search_results),
-            'explanation': query_engine.explain_results(results)
-        }
-    
-    def _find_similar(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Find code similar to a reference"""
-        query = data['query']
-        max_results = data.get('max_results', 10)
-        
-        # Get vector store and query engine
-        vector_store = self.session_stores.get_store(session_id)
-        query_engine = QueryEngine(vector_store)
-        
-        # First, find the reference chunk by searching
-        reference_results = query_engine.search(query, max_results=1)
-        
-        if not reference_results:
-            return {
-                'query': query,
-                'error': 'No reference code found for similarity search',
-                'results': []
-            }
-        
-        reference_chunk = reference_results[0].chunk
-        
-        # Find similar chunks
-        similar_results = query_engine.find_similar_code(
-            reference_chunk, 
-            max_results=max_results
-        )
-        
-        search_results = [result.to_dict() for result in similar_results]
-        
-        return {
-            'query': query,
-            'reference': reference_results[0].to_dict(),
-            'similar_results': search_results,
-            'total_results': len(search_results)
-        }
-    
-    def _find_functions(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Find functions matching the query"""
-        query = data['query']
-        max_results = data.get('max_results', 10)
-        
-        # Get vector store and query engine
-        vector_store = self.session_stores.get_store(session_id)
-        query_engine = QueryEngine(vector_store)
-        
-        # Search for functions
-        results = query_engine.find_functions(query, max_results)
-        
-        search_results = [result.to_dict() for result in results]
-        
-        return {
-            'query': query,
-            'search_type': 'functions',
-            'results': search_results,
-            'total_results': len(search_results)
-        }
-    
-    def _find_classes(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Find classes matching the query"""
-        query = data['query']
-        max_results = data.get('max_results', 10)
-        
-        # Get vector store and query engine
-        vector_store = self.session_stores.get_store(session_id)
-        query_engine = QueryEngine(vector_store)
-        
-        # Search for classes
-        results = query_engine.find_classes(query, max_results)
-        
-        search_results = [result.to_dict() for result in results]
-        
-        return {
-            'query': query,
-            'search_type': 'classes',
-            'results': search_results,
-            'total_results': len(search_results)
-        }
-    
-    def _find_patterns(self, data: Dict[str, Any], session_id: str) -> Dict[str, Any]:
-        """Find code patterns matching the description"""
-        query = data['query']
-        max_results = data.get('max_results', 10)
-        
-        # Get vector store and query engine
-        vector_store = self.session_stores.get_store(session_id)
-        query_engine = QueryEngine(vector_store)
-        
-        # Search for patterns
-        results = query_engine.find_patterns(query, max_results)
-        
-        search_results = [result.to_dict() for result in results]
-        
-        return {
-            'query': query,
-            'search_type': 'patterns',
-            'results': search_results,
-            'total_results': len(search_results)
-        }
-    
-    def _get_statistics(self, session_id: str) -> Dict[str, Any]:
-        """Get statistics for the current session"""
-        stats = self.session_stores.get_session_stats(session_id)
-        
-        if stats is None:
-            return {
-                'session_id': session_id,
-                'error': 'No data found for this session',
-                'analyzed': False
-            }
-        
-        return {
-            'session_id': session_id,
-            'statistics': stats,
-            'analyzed': True
-        }
-    
-    def _cleanup_session(self, session_id: str) -> Dict[str, Any]:
-        """Clean up session data"""
-        removed = self.session_stores.remove_store(session_id)
-        
-        return {
-            'session_id': session_id,
-            'cleaned': removed,
-            'message': 'Session cleaned successfully' if removed else 'No session data to clean'
-        }
-    
-    def _create_success_output(self, session_id: str, start_time: datetime, result: Dict[str, Any]) -> AgentOutput:
-        """Create a successful agent output"""
-        processing_time = (datetime.now() - start_time).total_seconds()
+        execution_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+        return self._create_output(status, result, execution_time_ms)
+
+    def _create_output(self, status: AgentStatus, data: Dict[str, Any], execution_time_ms: int) -> AgentOutput:
         return AgentOutput(
+            session_id="",
             agent_id=self.agent_id,
-            session_id=session_id,
-            status=AgentStatus.SUCCESS,
-            data=result,
-            execution_time_ms=int(processing_time * 1000),
-            timestamp=datetime.now(),
-            metadata={
-                'processing_time': processing_time,
-                'agent_type': 'vector_knowledge_graph'
-            }
-        )
-    
-    def _create_error_output(self, session_id: str, start_time: datetime, error_message: str) -> AgentOutput:
-        """Create an error agent output"""
-        processing_time = (datetime.now() - start_time).total_seconds()
-        return AgentOutput(
-            agent_id=self.agent_id,
-            session_id=session_id,
-            status=AgentStatus.ERROR,
-            data={'error': error_message},
-            execution_time_ms=int(processing_time * 1000),
-            timestamp=datetime.now(),
-            error_message=error_message,
-            metadata={
-                'processing_time': processing_time,
-                'agent_type': 'vector_knowledge_graph'
-            }
+            status=status,
+            data=data,
+            execution_time_ms=execution_time_ms,
+            timestamp=datetime.now()
         )
 
 
@@ -329,8 +488,9 @@ def create_sample_agent_input(operation: str, data: Dict[str, Any], session_id: 
     )
 
 
+"""
 def demo_repository_analysis(repo_path: str = ".") -> None:
-    """Demo function to show repository analysis"""
+    Demo function to show repository analysis
     agent = KnowledgeGraphAgent()
     
     # Analyze repository
@@ -373,3 +533,9 @@ def demo_repository_analysis(repo_path: str = ".") -> None:
 if __name__ == "__main__":
     # Run demo
     demo_repository_analysis() 
+
+"""
+  # Add at the very end of the file
+if __name__ == "__main__":
+    print("Running KnowledgeGraphAgent module directly - initializing test instance...")
+    agent = KnowledgeGraphAgent()  # Or add simple test code here
