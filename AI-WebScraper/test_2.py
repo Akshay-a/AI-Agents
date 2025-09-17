@@ -1,11 +1,12 @@
 import asyncio
 import os
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app import SearchAgent
 import re
 from datetime import datetime
 from pathlib import Path
+from groq import Groq
 
 # Sample URL to crawl (same as in test.py)
 SAMPLE_URL = "https://undergrad.admissions.columbia.edu/classprofile/2027"
@@ -142,6 +143,14 @@ async def test_rag_workflow():
         output_content += f"**Question:** {SAMPLE_QUESTION}\n\n"
         output_content += f"**Search Results:**\n\n"
         
+        # Combine all search results into a single context
+        combined_context = "\n\n---\n\n".join(
+            f"Source: {result.get('metadata', {}).get('source', 'N/A')}\n"
+            f"Relevance Score: {1 - result.get('distance', 0):.2f}\n\n"
+            f"{result.get('text', 'No content')}"
+            for result in search_results
+        )
+        
         for i, result in enumerate(search_results, 1):
             output_content += f"## Result {i}\n"
             output_content += f"**Source:** {result.get('metadata', {}).get('source', 'N/A')}\n"
@@ -149,9 +158,65 @@ async def test_rag_workflow():
             output_content += result.get('text', 'No content')
             output_content += "\n\n---\n\n"
         
+        # Step 5: Get LLM response
+        print("\n5. Getting LLM response...")
+        llm_response = await get_llm_response(SAMPLE_QUESTION, combined_context)
+        
+        if llm_response:
+            print("\nLLM Response:")
+            print("-" * 80)
+            print(llm_response)
+            print("-" * 80)
+            
+            # Add LLM response to the markdown output
+            output_content += "# LLM Response\n\n"
+            output_content += llm_response
+        else:
+            output_content += "\n# Error: Could not get LLM response\n"
+        
         filename = f"rag_search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         save_markdown(output_content, filename=filename)
-        print(f"\nSearch results saved to: {filename}.md")
+        print(f"\nSearch results and LLM response saved to: {filename}.md")
+
+async def get_llm_response(question: str, context: str, model: str = "llama-3.1-8b-instant") -> Optional[str]:
+    try:
+        client = Groq(api_key=os.environ["GROQ_API_KEY"])
+        
+        # Prepare the prompt with context and question
+        prompt = f"""You are a helpful assistant that answers questions based on the provided context.
+        
+        Context:
+        {context}
+        
+        Question: {question}
+        
+        Answer the question based on the context above. If the context doesn't contain the answer, say "I couldn't find the answer in the provided context."""
+        
+        # Make the API call
+        completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that provides accurate and concise answers based on the given context."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            model=model,
+            temperature=0.3,
+            max_tokens=1024,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
+        
+        return completion.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Error in LLM inference: {str(e)}")
+        return None
 
 if __name__ == "__main__":
     # Make sure GROQ_API_KEY is set
