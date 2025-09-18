@@ -476,7 +476,8 @@ class SearchAgent:
                 elif not isinstance(content, list):
                     content = [str(content)]
                 print("=="*50)
-                print(f"content is {content}")
+                #below has all extracted content
+                #print(f"content is {content}")
                 print("=="*50)
                 chunk_count = self.rag_manager.store_document(
                     content=content,  # Pass as list to preserve chunking
