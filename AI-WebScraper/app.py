@@ -7,12 +7,13 @@ from ddgs import DDGS
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, LLMConfig, LLMExtractionStrategy
 from crawl4ai.processors.pdf import PDFCrawlerStrategy, PDFContentScrapingStrategy
 from rag_manager import RAGManager
+from groq import Groq
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
-DEFAULT_NUM_RESULTS = 20
+DEFAULT_NUM_RESULTS = 1
 MAX_CONCURRENT_FETCHES = 5
 REQUEST_TIMEOUT = 25  # seconds
 
@@ -26,36 +27,119 @@ class SearchAgent:
         # Initialize the RAG manager for storing and retrieving documents
         self.rag_manager = RAGManager(persist_directory=rag_db_path)
 
-    async def run(self, query: str, num_results: int = DEFAULT_NUM_RESULTS) -> List[Dict[str, Any]]:
+    async def get_llm_response(self, question: str, context: str, model: str = "llama-3.1-8b-instant") -> Optional[str]:
+        """Get a response from the LLM based on the provided context and question.
+        
+        Args:
+            question: The question to answer
+            context: The context to use for generating the response
+            model: The LLM model to use (default: "llama-3.1-8b-instant")
+            
+        Returns:
+            The generated response or None if an error occurs
         """
-        Performs a search using DuckDuckGo, fetches content asynchronously,
-        extracts text using crawl4AI with LLM strategy, and returns the results.
+        try:
+            if "GROQ_API_KEY" not in os.environ:
+                logger.error("GROQ_API_KEY environment variable is not set")
+                return None
+                
+            client = Groq(api_key=os.environ["GROQ_API_KEY"])
+            
+            # Prepare the prompt with context and question
+            prompt = f"""You are a helpful assistant that answers questions based on the provided context.
+            
+            Context:
+            {context}
+            
+            Question: {question}
+            
+            Please provide a clear, well-structured response that directly addresses the question using the 
+            information from the context. If the context doesn't contain enough information to answer the 
+            question, return 0 as response """
+            
+            # Make the API call
+            completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that provides accurate and concise answers based on the given context."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                model=model,
+                temperature=0.3,
+                max_tokens=2048,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0
+            )
+            
+            return completion.choices[0].message.content.strip()
+            
+        except Exception as e:
+            logger.error(f"Error getting LLM response: {e}", exc_info=True)
+            return None
 
+    async def run(self, query: str, num_results: int = DEFAULT_NUM_RESULTS) -> str:
+        """
+        Performs a search by first checking the vector database for relevant results.
+        If no relevant results are found, falls back to DuckDuckGo search.
+        
         Args:
             query: The search query.
             num_results: Maximum number of search results to process.
             
         Returns:
-            List of processed search results with extracted content and question context
+            String containing search results, either from vector DB or web search,
+            processed through an LLM for better clarity.
         """
         logger.info(f"Starting search for query: {query}")
 
         try:
-            # 1. Perform Search
+            # 1. First try to get results from the vector database
+            logger.info("Searching vector database...")
+            rag_results = await self.search_rag(
+                query=query,
+                question=query,  # Use the query as the question for filtering
+                n_results=num_results,
+                filter_by_question=True
+            )
+
+            # If we have relevant results from the vector database, process them with LLM
+            if rag_results and len(rag_results) > 0:
+                logger.info(f"Found {len(rag_results)} relevant results in vector database")
+                # Convert results to string and process with LLM
+                results_context = "\n\n".join([str(result) for result in rag_results])
+                llm_response = await self.get_llm_response(query, results_context)
+                if llm_response!=0 : return llm_response or f"Here's what I found:\n\n{results_context}"
+
+            # 2. If no results from vector DB, perform web search
+            logger.info("No relevant results in vector database, performing web search...")
             search_results_list = await self._perform_duckduckgo_search_with_retry(query, num_results)
             if not search_results_list:
                 logger.warning(f"No search results found for query: {query}")
-                return []
+                return "No results found in vector database or web search."
 
-            # 2. Extract content using crawl4AI with LLM strategy
+            # 3. Extract content using crawl4AI with LLM strategy
             processed_results = await self._extract_with_crawl4ai(search_results_list)
             
+            if not processed_results:
+                logger.warning("No content could be extracted from search results")
+                return "No content could be extracted from search results."
+                
             logger.info(f"Successfully processed {len(processed_results)} out of {len(search_results_list)} search results.")
             
-            # Store and return results with question context
+            # 4. Store the new results in the vector database
             stored_results = await self._store_results(processed_results, query)
-            logger.info(f"Finished processing query: '{query}'. {len(stored_results)} results available.")
-            return stored_results
+            logger.info(f"Stored {len(stored_results)} new results in vector database.")
+            
+            # 5. Format the results using LLM for better clarity
+            results_context = "\n\n".join([str(result) for result in stored_results])
+            llm_response = await self.get_llm_response(query, results_context)
+            return llm_response or f"Here's what I found:\n\n{results_context}"
 
         except Exception as e:
             logger.error(f"Error during search and processing: {e}", exc_info=True)
@@ -155,7 +239,7 @@ class SearchAgent:
                 logger.info(f"Attempting DuckDuckGo search (Attempt {retries + 1}/{max_retries + 1})...")
                 # Run the synchronous function in a thread pool
                 results = await asyncio.to_thread(sync_search, page=1)
-                results.extend(await asyncio.to_thread(sync_search, page=2))
+                #results.extend(await asyncio.to_thread(sync_search, page=2))
                 #will check again if needed for page 3
                 #results.extend(await asyncio.to_thread(sync_search, page=3))
                 logger.info(f"Successfully retrieved {len(results)} results")
@@ -500,7 +584,7 @@ class SearchAgent:
             
         return processed_results
         
-    async def _store_results(self, results: List[Dict[str, Any]], question: str) -> List[Dict[str, Any]]:
+    async def _store_results(self, results: List[Dict[str, Any]], question: str) -> str:
         """Process and return the search results with question-based indexing.
         
         Args:
@@ -541,14 +625,37 @@ class SearchAgent:
             except Exception as e:
                 logger.error(f"Error saving file {filepath}: {e}")
                 result['save_error'] = str(e)
+        search_results = await self.search_rag(
+                            query=question,
+                            question=question,
+                            n_results=3, #setting this since chunks might me small & not have enough context
+                            filter_by_question=True)
         
-        return results
+        if search_results:
+            # Combine all search results into a single context
+            combined_context = "\n\n---\n\n".join(
+                f"Source: {result.get('metadata', {}).get('source', 'N/A')}\n"
+                f"Relevance Score: {1 - result.get('distance', 0):.2f}\n\n"
+                f"{result.get('text', 'No content')}"
+                for result in search_results
+            )
+            print(f"combined context is {combined_context}")
+
+            # Get LLM response
+            llm_response = await self.get_llm_response(question, combined_context)
+            if llm_response:
+                result['llm_response'] = llm_response
+            else:
+                result['llm_response'] = combined_context   
         if not results:
             logger.warning("No results to process")
-            return []
+            return 'None'
             
         logger.info(f"Processed {len(results)} search results")
-        return results
+        # Return the first result's llm_response if available, otherwise return the first result
+        if results and 'llm_response' in results[0]:
+            return results[0]['llm_response']
+        return results[0] if results else 'No results found'
 
 
 async def main():
@@ -564,19 +671,7 @@ async def main():
     agent = SearchAgent()
     results = await agent.run(query, num_results=5)  # Limit to 5 results for demo
     
-    # Print summarized results
-    print(f"\n\n===== SEARCH RESULTS FOR: '{query}' =====\n")
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result['title']}")
-        print(f"   URL: {result['url']}")
-        print(f"   Status: {'✓ Success' if result['success'] else '✗ Failed'}")
-        if not result['success']:
-            print(f"   Error: {result.get('error', 'Unknown error')}")
-        else:
-            # Show first 500 characters of extracted content as summary
-            content_preview = result['extracted_text'][:500] + "..." if len(result['extracted_text']) > 500 else result['extracted_text']
-            print(f"   Content Preview: {content_preview}")
-        print()
+    print(f"results are {results}")
 
 
 if __name__ == "__main__":
