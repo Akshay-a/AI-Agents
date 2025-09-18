@@ -45,17 +45,30 @@ class SearchAgent:
                 
             client = Groq(api_key=os.environ["GROQ_API_KEY"])
             
-            # Prepare the prompt with context and question
-            prompt = f"""You are a helpful assistant that answers questions based on the provided context.
-            
-            Context:
-            {context}
-            
+            # Prepare a general-purpose system prompt
+            system_prompt = """You are a helpful AI assistant that delivers clear, direct answers from real-time web sources. Your responses should be:
+1. Concise and to the point
+2. Written in a natural, conversational tone
+3. Include specific quotes or numbers when they add value
+4. Optimistic and solution-focused
+5. Free of disclaimers or discussions about missing information, don't mention abuot Parts of the question that can't be answered with the available information
+
+Remember: Give direct answers using the information you have. Skip any meta-commentary about sources or limitations."""
+
+            # User prompt combines context and question
+            user_prompt = context if "I found several relevant articles" in context else f"""
             Question: {question}
             
-            Please provide a clear, well-structured response that directly addresses the question using the 
-            information from the context. If the context doesn't contain enough information to answer the 
-            question, return 0 as response """
+            I've searched the web and found this relevant information:
+            
+            {context}
+            
+            Please provide a clear answer that:
+            1. Directly addresses the question using this information
+            2. Includes relevant details that help explain the answer
+            3. Notes any parts of the question that can't be answered with the available information
+            if the context is not sufficient say "0"
+            """
             
             # Make the API call
             completion = client.chat.completions.create(
@@ -66,7 +79,7 @@ class SearchAgent:
                     },
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": user_prompt
                     }
                 ],
                 model=model,
@@ -82,6 +95,270 @@ class SearchAgent:
         except Exception as e:
             logger.error(f"Error getting LLM response: {e}", exc_info=True)
             return None
+
+    async def run_async_upsert(self, query: str, num_results: int = DEFAULT_NUM_RESULTS) -> str:
+        """
+        Optimized version of run() that returns results immediately and handles RAG storage asynchronously.
+        Uses parallel processing for URL content extraction and separates DB operations.
+        
+        Args:
+            query: The search query
+            num_results: Maximum number of search results to process
+            
+        Returns:
+            String containing search results processed through LLM, while handling storage asynchronously
+        """
+        logger.info(f"Starting optimized async search for query: {query}")
+        try:
+            # 1. Quick check in RAG DB first (with short timeout)
+            try:
+                async with asyncio.timeout(2.0):  # 2 second timeout for RAG search
+                    rag_results = await self.search_rag(
+                        query=query,
+                        question=query,
+                        n_results=num_results,
+                        filter_by_question=True
+                    )
+                    if rag_results and len(rag_results) > 0:
+                        results_context = "\n\n".join([str(result) for result in rag_results])
+                        llm_response = await self.get_llm_response(query, results_context)
+                        if llm_response != 0:
+                            return llm_response
+            except asyncio.TimeoutError:
+                logger.info("RAG DB check timed out, proceeding with web search")
+                pass
+            
+            # 2. Perform web search
+            search_results_list = await self._perform_duckduckgo_search_with_retry(query, num_results)
+            if not search_results_list:
+                return "No results found."
+                
+            # 3. Process URLs in parallel with true concurrency
+            async def process_url_optimized(crawler, config, url, result_item):
+                try:
+                    result = await crawler.arun(url=url, config=config)
+                    if not result.success:
+                        return None
+                    
+                    content = result.extracted_content or ""
+                    if not content and hasattr(result, 'markdown'):
+                        content = result.markdown.raw_markdown if hasattr(result.markdown, 'raw_markdown') else str(result.markdown)
+                    
+                    return {
+                        'url': url,
+                        'title': result_item.get('title', ''),
+                        'extracted_text': content,
+                        'success': True
+                    }
+                except Exception as e:
+                    logger.error(f"Error processing {url}: {e}")
+                    return None
+                    
+            # Setup crawlers and process URLs
+            browser_config = BrowserConfig(headless=True)
+            llm_config = LLMConfig(
+                provider="groq/llama-3.1-8b-instant",
+                api_token=os.getenv("GROQ_API_KEY"),
+                temperature=0.3,
+                max_tokens=12000
+            )
+            
+            extraction_strategy = LLMExtractionStrategy(llm_config=llm_config)
+            html_crawl_config = CrawlerRunConfig(extraction_strategy=extraction_strategy)
+            
+            # Process all URLs concurrently
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                tasks = []
+                for result in search_results_list:
+                    url = result.get('link')
+                    if url:
+                        task = process_url_optimized(crawler, html_crawl_config, url, result)
+                        tasks.append(task)
+                
+                results = await asyncio.gather(*tasks)
+                results = [r for r in results if r]  # Filter out None results
+                
+            if not results:
+                return "Could not extract content from any URLs."
+                
+            # 4. Process results with LLM immediately
+            # Format content more effectively for LLM understanding
+            formatted_content = []
+            for r in results:
+                if r.get('extracted_text'):
+                    article_content = (
+                        f"\n=== Article from {r['url']} ===\n"
+                        f"Title: {r['title']}\n"
+                        f"Content:\n{r['extracted_text']}\n"
+                        f"=== End Article ===\n"
+                    )
+                    formatted_content.append(article_content)
+            
+            if not formatted_content:
+                return "No content could be extracted from the search results."
+            
+            combined_content = "\n".join(formatted_content)
+            
+            # Create a more focused prompt for the LLM
+            focused_prompt = f"""You are a helpful assistant analyzing recent news articles. Please provide a detailed summary addressing this specific query: "{query}"
+
+Based on the following Web pages:
+
+{combined_content}
+
+Please provide a comprehensive answer that:
+1. Summarizes the key points about the rate cut
+2. Highlights specific quotes or statements from Powell
+3. Mentions any important economic implications
+4. Includes relevant dates and numbers
+
+If the information isn't in the articles, only mention what is supported by the sources."""
+            
+            llm_response = await self.get_llm_response(query, focused_prompt)
+            
+            # 5. Start async RAG storage without waiting
+            asyncio.create_task(self._async_store_in_rag(results, query))
+            
+            if llm_response == "0" or not llm_response:
+                return "Could not extract a clear answer from the content. Please try rephrasing your question."
+                
+            return llm_response
+            
+        except Exception as e:
+            logger.error(f"Error in async search: {e}", exc_info=True)
+            raise RuntimeError(f"Failed to execute async search: {e}")
+
+    async def _async_store_in_rag(self, results: List[Dict[str, Any]], question: str):
+        """Asynchronously store results in RAG database without blocking the main flow."""
+        storage_status = {
+            'total': len(results),
+            'successful': 0,
+            'failed': 0,
+            'stored_urls': [],
+            'failed_urls': [],
+            'completion_time': None,
+            'start_time': None
+        }
+        
+        try:
+            storage_status['start_time'] = datetime.datetime.now().isoformat()
+            logger.info(f"Starting async RAG storage for {len(results)} results at {storage_status['start_time']}")
+            
+            for result in results:
+                try:
+                    if result.get('extracted_text'):
+                        content = [result['extracted_text']]
+                        url = result['url']
+                        title = result['title']
+                        
+                        # Store document and get chunk count
+                        chunk_count = await self.rag_manager.store_document(
+                            content=content,
+                            url=url,
+                            question=question,
+                            title=title,
+                            source_type='web',
+                            metadata={'storage_time': storage_status['start_time']}
+                        )
+                        
+                        storage_status['successful'] += 1
+                        storage_status['stored_urls'].append({
+                            'url': url,
+                            'chunks': chunk_count,
+                            'timestamp': datetime.datetime.now().isoformat()
+                        })
+                        logger.info(f"Successfully stored {chunk_count} chunks for URL: {url}")
+                        
+                except Exception as e:
+                    storage_status['failed'] += 1
+                    storage_status['failed_urls'].append({
+                        'url': result.get('url'),
+                        'error': str(e),
+                        'timestamp': datetime.datetime.now().isoformat()
+                    })
+                    logger.error(f"Error storing result for {result.get('url')}: {e}")
+                    continue
+            
+            storage_status['completion_time'] = datetime.datetime.now().isoformat()
+            await self._save_storage_status(storage_status, question)
+            
+            logger.info(
+                f"Completed async RAG storage: {storage_status['successful']}/{storage_status['total']} "
+                f"successful, {storage_status['failed']} failed. "
+                f"Total time: {self._get_time_diff(storage_status['start_time'], storage_status['completion_time'])}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in async RAG storage: {e}")
+            storage_status['completion_time'] = datetime.datetime.now().isoformat()
+            await self._save_storage_status(storage_status, question)
+
+    def _get_time_diff(self, start_time: str, end_time: str) -> str:
+        """Calculate time difference between two ISO format timestamps."""
+        start = datetime.datetime.fromisoformat(start_time)
+        end = datetime.datetime.fromisoformat(end_time)
+        diff = end - start
+        return f"{diff.total_seconds():.2f}s"
+
+    async def _save_storage_status(self, status: Dict, question: str):
+        """Save storage status to a file for later verification."""
+        try:
+            status_dir = "storage_status"
+            os.makedirs(status_dir, exist_ok=True)
+            
+            filename = f"storage_status_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            filepath = os.path.join(status_dir, filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump({
+                    'question': question,
+                    'status': status,
+                    'summary': {
+                        'total_urls': status['total'],
+                        'successful_urls': status['successful'],
+                        'failed_urls': status['failed'],
+                        'total_time': self._get_time_diff(status['start_time'], status['completion_time'])
+                    }
+                }, f, indent=2)
+                
+            logger.info(f"Storage status saved to {filepath}")
+        except Exception as e:
+            logger.error(f"Error saving storage status: {e}")
+
+    async def verify_storage(self, question: str) -> Dict:
+        """
+        Verify the storage status for a specific question.
+        Returns details about stored documents and their chunks.
+        """
+        try:
+            # Search for documents related to the question
+            results = await self.search_rag(
+                query=question,
+                question=question,
+                n_results=100,  # Increase to get all related documents
+                filter_by_question=True
+            )
+            
+            verification = {
+                'question': question,
+                'total_documents': len(results),
+                'documents': []
+            }
+            
+            for result in results:
+                doc_info = {
+                    'url': result.get('metadata', {}).get('url', 'N/A'),
+                    'title': result.get('metadata', {}).get('title', 'N/A'),
+                    'storage_time': result.get('metadata', {}).get('storage_time', 'N/A'),
+                    'chunk_size': len(result.get('text', '')),
+                }
+                verification['documents'].append(doc_info)
+            
+            return verification
+            
+        except Exception as e:
+            logger.error(f"Error verifying storage: {e}")
+            return {'error': str(e)}
 
     async def run(self, query: str, num_results: int = DEFAULT_NUM_RESULTS) -> str:
         """
