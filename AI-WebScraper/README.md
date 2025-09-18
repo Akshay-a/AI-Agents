@@ -7,7 +7,7 @@ This is a Web scraper agent that is planned to be a part of larger agentic syste
 real time information access like documentation, pullling detailed answers from large webpages, targetted search on large PDFs online, Making this agent open source.
 
 This Agent takes input as a query:
-Checks for cache memory first and if not found then runs web search.
+Checks for VectorDB Embeedinds in memory first and if not found then runs web search.
 
 run a duckduckgo search----> get top 20 URLS------> 
 
@@ -19,3 +19,9 @@ The Reasoning is draawn from the RAG and the input question is saved as id in th
 
 When the Agent needs more sophisticated information that is part of already fetched information, The Agent takes the input
 and checks in cache , if not found it will run a new duckduckgo search and fetch the information and insert to RAG else it directly referes to the nearest 10 embeddings and uses LLM to generate the answer.
+
+
+To test this agent -->
+
+- paste the test URL ( or set of URLs) in test.py file and run it , you can validate if the markdown files are created in output folder
+- To test the RAG Retrieval , paste the URLs in test_2 and update question that you want to test on , run it and validate if Agent gives nearest answer. 
