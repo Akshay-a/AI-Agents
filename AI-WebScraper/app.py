@@ -584,6 +584,37 @@ class SearchAgent:
             
         return processed_results
         
+    async def run_batch_urls(self, urls: List[str], context: str) -> str:
+        """Process a list of URLs directly, extracting their content and storing in the vector database.
+        
+        Args:
+            urls: List of URLs to process
+            context: Context description for storing the documents (should be passed since it is added as metadata field)
+            
+        Returns:
+            Summary of the processing results
+        """
+        try:
+            # Convert URLs to search result format
+            search_results = [{'link': url, 'title': url} for url in urls]
+            
+            # Extract content using existing crawler
+            processed_results = await self._extract_with_crawl4ai(search_results)
+            
+            if not processed_results:
+                return "No content could be extracted from the provided URLs."
+                
+            # Store results in vector database
+            stored_results = await self._store_results_in_rag(processed_results, context)
+            
+            # Return summary
+            success_count = sum(1 for r in processed_results if r.get('success', False))
+            return f"Successfully processed {success_count} out of {len(urls)} URLs. Content stored in vector database."
+            
+        except Exception as e:
+            logger.error(f"Error processing URLs: {e}", exc_info=True)
+            raise RuntimeError(f"Failed to process URLs: {e}")
+
     async def _store_results(self, results: List[Dict[str, Any]], question: str) -> str:
         """Process and return the search results with question-based indexing.
         
