@@ -9,8 +9,8 @@ from pathlib import Path
 from groq import Groq
 
 # Sample URL to crawl (same as in test.py)
-SAMPLE_URL = "https://undergrad.admissions.columbia.edu/classprofile/2027"
-SAMPLE_QUESTION = "what are the Number of applicants admitted under early decision plan?"
+SAMPLE_URL = "https://opir.columbia.edu/sites/opir.columbia.edu/files/content/Common%20Data%20Set/2023-24_Columbia_College_and_Columbia_Engineering_CDS.pdf"
+SAMPLE_QUESTION = "Can allow students to postpone enrollment after admission? IF yes, what is the maximum period of Postponment?"
 
 def save_markdown(content: str, filename: str = None, output_dir: str = 'output'):
     """
@@ -71,8 +71,8 @@ async def test_rag_workflow():
     print(f"\n1. Preparing to crawl URL: {SAMPLE_URL}")
     search_result = [{
         'link': SAMPLE_URL,
-        'title': 'Columbia University Class Profile',
-        'snippet': 'Admissions statistics and class profile for Columbia University'
+        'title': 'Columbia college General Info',
+        'snippet': 'FAQ on columbia university'
     }]
     print("Search result prepared.")
     
@@ -99,7 +99,12 @@ async def test_rag_workflow():
     except Exception as e:
         print(f"Error during content extraction: {str(e)}")
         return
-    
+    #Intermittent Step:
+    print("\n2. Running Intermittent step to test context...")
+    #llm_response = await get_llm_response(SAMPLE_QUESTION, processed_results[0]['extracted_text'])
+    #if llm_response:
+    #    print("\nLLM Response for extracted text to test normal llm response without embeddings:")
+    #    print(llm_response)
     # Step 3: Store in RAG with our sample question
     print(f"\n3. Storing content in RAG with question: {SAMPLE_QUESTION}")
     try:
@@ -121,7 +126,7 @@ async def test_rag_workflow():
     search_results = await agent.search_rag(
         query=SAMPLE_QUESTION,
         question=SAMPLE_QUESTION,
-        n_results=3,
+        n_results=20, #setting this since chunks might me small & not have enough context
         filter_by_question=True
     )
     
@@ -190,7 +195,7 @@ async def get_llm_response(question: str, context: str, model: str = "llama-3.1-
         
         Question: {question}
         
-        Answer the question based on the context above. If the context doesn't contain the answer, say "I couldn't find the answer in the provided context."""
+        Answer the question based on the context above. If the context doesn't contain the answer, say "No,Do Web Search" """
         
         # Make the API call
         completion = client.chat.completions.create(
