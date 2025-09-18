@@ -1,0 +1,8 @@
+crawl4ai
+duckduckgo-search
+aiohttp
+trafilatura
+beautifulsoup4
+lxml
+playwright
+groq
