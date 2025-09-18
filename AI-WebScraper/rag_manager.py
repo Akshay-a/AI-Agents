@@ -7,11 +7,13 @@ with sentence-transformers for embeddings.
 
 import os
 import hashlib
+import re
 from typing import List, Dict, Any, Optional, Tuple
 import chromadb
 from chromadb.utils import embedding_functions
 from more_itertools import batched
 import logging
+from groq import Groq
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -251,6 +253,73 @@ class RAGManager:
             
         return optimized
 
+    def _generate_question_keyword(self, question: str) -> str:
+        """
+        Generate a consistent keyword from a question to use for filtering.
+        Uses Groq API with Llama 3.1 8B model to generate a keyword.
+        
+        Args:
+            question: The input question
+            
+        Returns:
+            A consistent keyword representing the main topic of the question in snake_case
+        """
+        if not question:
+            return "general"
+            
+        try:
+            from groq import Groq
+            import os
+            
+            # Initialize Groq client
+            groq_api_key = os.getenv("GROQ_API_KEY")
+            if not groq_api_key:
+                logger.warning("GROQ_API_KEY not found in environment variables")
+                return self._fallback_keyword_generation(question)
+                
+            client = Groq(api_key=groq_api_key)
+            
+            # Prepare the prompt
+            prompt = """Extract the main topic or subject from the following question as a single keyword or short phrase. 
+            Return only the keyword/phrase in snake_case format, nothing else. 
+            Example: For 'What are the best restaurants in Sydney?', return 'sydney'' because sydney captures information about overall information.
+            Example: For 'What are the Postponement of enrollment after admission at columbia University?', return 'columbia_university' because it captures overall information about columbia university and not jsut specific keyword like postponement.
+            Focus on high level keywords that capture overall information.
+            
+            Question: {question}""".format(question=question)
+            
+            # Call Groq API
+            response = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that extracts the main topic from questions as a single keyword or short phrase in snake_case.Simply return the keyword/phrase in snake_case format, nothing else."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                model="llama-3.1-8b-instant",
+                temperature=0.1,
+                max_tokens=10
+            )
+            
+            # Extract and clean the keyword
+            if response.choices and response.choices[0].message.content:
+                keyword = response.choices[0].message.content.strip().lower()
+                # Clean the response to ensure it's in snake_case
+                keyword = re.sub(r'[^\w\s]', '', keyword)  # Remove special characters
+                keyword = re.sub(r'\s+', '_', keyword)      # Replace spaces with underscores
+                keyword = keyword.strip('_')                 # Remove leading/trailing underscores
+                return keyword or "general"
+            
+            return "general"
+            
+        except Exception as e:
+            logger.warning(f"Error generating keyword with Groq API: {e}")
+            return "general"    
+
     def store_document(
             self,
             content: List[str],
@@ -292,11 +361,17 @@ class RAGManager:
         #optimized_chunks=content
         # Prepare metadata
         doc_metadata = metadata or {}
+        
+        # Generate a consistent keyword for the question
+        question_keyword = self._generate_question_keyword(question)
+        print(f"Question keyword Generated: {question_keyword}")
+        
         doc_metadata.update({
             'url': url,
             'title': title,
             'source': source_type,
             'question': question,
+            'question_keyword': question_keyword,  # Add the generated keyword
             'stored_at': datetime.now().isoformat()
         })
         
@@ -319,7 +394,6 @@ class RAGManager:
             
             documents.append(chunk)
             metadatas.append(chunk_metadata)
-            print(f"chunk metadata is {chunk_metadata}")
             ids.append(doc_id)
             
         if not documents:
@@ -350,7 +424,8 @@ class RAGManager:
         n_results: int = 5,
         where: Optional[Dict[str, Any]] = None,
         where_document: Optional[Dict[str, Any]] = None,
-        filter_by_question: bool = True
+        filter_by_question: bool = True,
+        use_question_keyword: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Search the vector database for documents similar to the query.
@@ -365,12 +440,22 @@ class RAGManager:
             List of search results with documents and metadata
         """
         try:
+            # Initialize where clause if not provided
+            if where is None:
+                where = {}
+                
             # If we have a question and want to filter by it
             if question and filter_by_question:
-                if where is None:
-                    where = {}
-                where['question'] = question
+                if use_question_keyword:
+                    # Generate keyword from the question for filtering
+                    question_keyword = self._generate_question_keyword(question)
+                    where['question_keyword'] = question_keyword
+                    logger.info(f"Filtering by question keyword: {question_keyword}")
+                else:
+                    # Fallback to exact question matching
+                    where['question'] = question
             
+            logger.debug(f"Searching with where clause: {where}")
             results = self.collection.query(
                 query_texts=[query],
                 n_results=n_results,
@@ -403,6 +488,47 @@ class RAGManager:
             logger.error(f"Error searching the vector database: {e}")
             return []
     
+    
+    async def get_llm_response(question: str, context: str, model: str = "llama-3.1-8b-instant") -> Optional[str]:
+        try:
+            client = Groq(api_key=os.environ["GROQ_API_KEY"])
+            
+            # Prepare the prompt with context and question
+            prompt = f"""You are a helpful assistant that answers questions based on the provided context.
+            
+            Context:
+            {context}
+            
+            Question: {question}
+            
+            Answer the question based on the context above. If the context doesn't contain the answer, say "No,Do Web Search" """
+            
+            # Make the API call
+            completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that provides accurate and concise answers based on the given context."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                model=model,
+                temperature=0.3,
+                max_tokens=1024,
+                top_p=1,
+                stream=False,
+                stop=None,
+            )
+            
+            return completion.choices[0].message.content
+            
+        except Exception as e:
+            print(f"Error in LLM inference: {str(e)}")
+            return None
+
     def get_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the vector database.
