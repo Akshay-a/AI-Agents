@@ -306,7 +306,6 @@ class RAGManager:
         ids = []
         
         for i, chunk in enumerate(optimized_chunks):
-            print(f"Loading chunk {i}")
             if not chunk:
                 continue
                 
@@ -322,7 +321,7 @@ class RAGManager:
             metadatas.append(chunk_metadata)
             print(f"chunk metadata is {chunk_metadata}")
             ids.append(doc_id)
-            print(f"Chunk {i} stored")
+            
         if not documents:
             logger.warning(f"No valid chunks to store for {url}")
             return 0
