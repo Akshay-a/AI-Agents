@@ -712,7 +712,7 @@ function App() {
               A
             </div>
             <div className="ml-3">
-              <p className="text-sm font-semibold text-black">Akshay Apsingi</p>
+              <p className="text-sm font-semibold text-black">{process.env.REACT_APP_USER_NAME || 'Akshay Apsingi'}</p>
             </div>
           </div>
         </div>
