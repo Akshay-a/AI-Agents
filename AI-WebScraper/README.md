@@ -25,3 +25,27 @@ To test this agent -->
 
 - paste the test URL ( or set of URLs) in test.py file and run it , you can validate if the markdown files are created in output folder
 - To test the RAG Retrieval , paste the URLs in test_2 and update question that you want to test on , run it and validate if Agent gives nearest answer. 
+
+
+To Test the App like a application ( CHATGPT STYLE):
+
+---->Setting up the Environment:
+- Make sure you have GROQ_API_KEY in your environment variables (get it from https://console.groq.com/)
+- Backend uses FastAPI and needs this key for LLM inference
+
+---->Running the Backend:
+- Install Python dependencies: `pip install -r requirements.txt`
+- Start the FastAPI server: `uvicorn fastApi:app --reload --host 0.0.0.0 --port 8000`
+- Backend will be available at http://localhost:8000
+
+---->Running the Frontend:
+- Navigate to the scraperbot-ui folder: `cd scraperbot-ui`
+- Install npm packages: `npm install`
+- Start the React dev server: `npm start`
+- Frontend will be available at http://localhost:3000
+
+---->Using the App:
+- Open your browser and go to http://localhost:3000
+- Start chatting! The app will automatically create sessions and save your conversations
+- Add URLs to sessions by typing them in the chat or using the + button
+- The AI will scrape and analyze the content to answer your questions
