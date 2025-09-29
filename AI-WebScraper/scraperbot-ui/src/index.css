@@ -1,0 +1,56 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Custom styles for the chat interface */
+.chat-input-container {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  transition: all 0.2s ease-in-out;
+}
+
+.chat-input-container:focus-within {
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 1px rgba(156, 163, 175, 0.2);
+}
+
+.plus-button {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease-in-out;
+}
+
+.plus-button:hover {
+  background: #f3f4f6;
+}
+
+.send-button {
+  background: #000000;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid #374151;
+  color: white;
+}
+
+.send-button:hover {
+  background: #1f2937;
+  border-color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
