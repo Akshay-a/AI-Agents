@@ -169,11 +169,25 @@ Remember: Give direct answers using the information you have. Skip any meta-comm
             # Process all URLs concurrently
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 tasks = []
+                processed_urls = set()
+                
                 for result in search_results_list:
                     url = result.get('link')
-                    if url:
-                        task = process_url_optimized(crawler, html_crawl_config, url, result)
-                        tasks.append(task)
+                    if not url:
+                        continue
+                        
+                    # Skip already processed URLs
+                    if self.rag_manager.is_url_processed(url):
+                        logger.info(f"Skipping already processed URL: {url}")
+                        continue
+                        
+                    task = process_url_optimized(crawler, html_crawl_config, url, result)
+                    tasks.append(task)
+                    processed_urls.add(url)
+                
+                if not tasks:
+                    logger.info("No new URLs to process after filtering")
+                    return "No new content to process. All URLs have already been processed."
                 
                 results = await asyncio.gather(*tasks)
                 results = [r for r in results if r]  # Filter out None results
@@ -871,9 +885,30 @@ If the information isn't in the articles, only mention what is supported by the 
         Returns:
             Summary of the processing results
         """
+        if not urls:
+            return "No URLs provided for processing."
+            
         try:
-            # Convert URLs to search result format
-            search_results = [{'link': url, 'title': url} for url in urls]
+            # Filter out already processed URLs
+            unprocessed_urls = []
+            processed_urls = []
+            
+            for url in urls:
+                if self.rag_manager.is_url_processed(url):
+                    logger.info(f"Skipping already processed URL: {url}")
+                    processed_urls.append(url)
+                else:
+                    unprocessed_urls.append(url)
+            
+            if not unprocessed_urls:
+                return "All provided URLs have already been processed."
+            
+            # Convert unprocessed URLs to search result format
+            search_results = [{'link': url, 'title': url} for url in unprocessed_urls]
+            
+            # Add info about skipped URLs to the context
+            if processed_urls:
+                context = f"{context}\n\nNote: {len(processed_urls)} URLs were skipped as they were already processed."
             
             # Extract content using existing crawler
             processed_results = await self._extract_with_crawl4ai(search_results)
@@ -967,19 +1002,90 @@ If the information isn't in the articles, only mention what is supported by the 
 
 
 async def main():
-    # Get search query from command line arguments
+    # Get URLs from command line arguments
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python app.py <search_query>")
-        return
+        print("Usage: python app.py <url1> [url2 ...]")
+        print("Example: python app.py https://example.com https://example.org")
+        return 1
     
-    query = " ".join(sys.argv[1:])
+    urls = sys.argv[1:]
+    context = "User provided URLs for analysis"
     
-    # Create search agent and run search
+    print(f"Processing {len(urls)} URLs...")
+    
+    # Create search agent and process URLs
     agent = SearchAgent()
-    results = await agent.run(query, num_results=5)  # Limit to 5 results for demo
     
-    print(f"results are {results}")
+    try:
+        # Process the provided URLs
+        result = await agent.run_batch_urls(urls, context)
+        print(f"\n{result}")
+        
+        # Start interactive chat session
+        print("\n" + "="*50)
+        print("Interactive Chat Session")
+        print("Type 'exit' to end the session")
+        print("="*50 + "\n")
+        
+        while True:
+            try:
+                # Get user question
+                question = input("\nAsk a question about the content (or 'exit' to quit): ").strip()
+                
+                if question.lower() in ['exit', 'quit', 'q']:
+                    print("Ending session. Goodbye!")
+                    break
+                    
+                if not question:
+                    continue
+                
+                print("\nSearching for relevant information...")
+                
+                # Search RAG for relevant content
+                search_results = await agent.search_rag(
+                    query=question,
+                    question=context,
+                    n_results=3,
+                    filter_by_question=True
+                )
+                
+                if not search_results:
+                    print("No relevant information found in the provided URLs.")
+                    continue
+                
+                # Combine search results into context
+                combined_context = "\n\n---\n\n".join(
+                    f"Source: {result.get('metadata', {}).get('source', 'N/A')}\n"
+                    f"Relevance Score: {1 - result.get('distance', 0):.2f}\n\n"
+                    f"{result.get('text', 'No content')}"
+                    for result in search_results
+                )
+                
+                # Get LLM response
+                print("\nGenerating response...")
+                llm_response = await agent.get_llm_response(question, combined_context)
+                
+                if llm_response:
+                    print("\n" + "-"*50)
+                    print(llm_response)
+                    print("-"*50)
+                else:
+                    print("Sorry, I couldn't generate a response. Here's the relevant content I found:")
+                    print(combined_context)
+                
+            except KeyboardInterrupt:
+                print("\nEnding session. Goodbye!")
+                break
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"Error processing URLs: {e}")
+        return 1
+        
+    return 0
 
 
 if __name__ == "__main__":
