@@ -8,12 +8,15 @@ with sentence-transformers for embeddings.
 import os
 import hashlib
 import re
-from typing import List, Dict, Any, Optional, Tuple
+import json
+from typing import List, Dict, Any, Optional, Tuple, Union
 import chromadb
 from chromadb.utils import embedding_functions
-from more_itertools import batched
 import logging
+from datetime import datetime
 from groq import Groq
+from pathlib import Path
+import sqlite3
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -52,6 +55,9 @@ class RAGManager:
         # Initialize ChromaDB client and collection
         self.client = self._get_chroma_client()
         self.collection = self._get_or_create_collection()
+        
+        # Initialize URL tracking database
+        self._init_url_tracking()
     
     def _get_chroma_client(self) -> chromadb.PersistentClient:
         """Get a ChromaDB client with the specified persistence directory."""
@@ -83,6 +89,50 @@ class RAGManager:
             )
             logger.info(f"Created new collection: {self.collection_name}")
             return collection
+    
+    def _init_url_tracking(self):
+        """Initialize the URL tracking database."""
+        self.url_db_path = str(Path(self.persist_directory) / "url_tracking.db")
+        os.makedirs(os.path.dirname(self.url_db_path), exist_ok=True)
+        
+        with sqlite3.connect(self.url_db_path) as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS processed_urls (
+                url_hash TEXT PRIMARY KEY,
+                url TEXT UNIQUE NOT NULL,
+                processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata TEXT
+            )
+            """)
+            conn.commit()
+    
+    def is_url_processed(self, url: str) -> bool:
+        """Check if a URL has already been processed."""
+        with sqlite3.connect(self.url_db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM processed_urls WHERE url = ? LIMIT 1",
+                (url,)
+            )
+            return cursor.fetchone() is not None
+    
+    def mark_url_processed(self, url: str, metadata: Optional[Dict] = None) -> bool:
+        """Mark a URL as processed with optional metadata."""
+        url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+        metadata_str = json.dumps(metadata) if metadata else None
+        
+        try:
+            with sqlite3.connect(self.url_db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                INSERT OR IGNORE INTO processed_urls (url_hash, url, metadata)
+                VALUES (?, ?, ?)
+                """, (url_hash, url, metadata_str))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.IntegrityError:
+            logger.warning(f"URL already processed: {url}")
+            return False
     
     def _generate_document_id(self, url: str, chunk_index: int) -> str:
         """Generate a unique ID for a document chunk."""
@@ -342,7 +392,7 @@ class RAGManager:
         Returns:
             Number of chunks stored
         """
-        from datetime import datetime
+        
         
         if not content:
             logger.warning("No content or URL provided for storage")
@@ -408,6 +458,11 @@ class RAGManager:
                 ids=ids
             )
             logger.info(f"Stored {len(documents)} chunks for {url}")
+            
+            # Mark URL as processed after successful storage
+            self.mark_url_processed(url, doc_metadata)
+            logger.info(f"Marked URL as processed: {url}")
+            
             return len(documents)
             
         except Exception as e:
