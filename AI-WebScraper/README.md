@@ -35,6 +35,7 @@ To Test the App like a application ( CHATGPT STYLE):
 
 ---->Running the Backend:
 - Install Python dependencies: `pip install -r requirements.txt`
+- Run "pyton setup_db.py" , this will create tables required for App to persist chats across sessions
 - Start the FastAPI server: `uvicorn fastApi:app --reload --host 0.0.0.0 --port 8000`
 - Backend will be available at http://localhost:8000
 
