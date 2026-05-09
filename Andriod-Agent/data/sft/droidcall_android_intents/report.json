@@ -1,0 +1,1672 @@
+{
+  "source_rows": 10071,
+  "generated_rows": 4227,
+  "train_rows": 4027,
+  "eval_rows": 200,
+  "drop_reasons": [
+    [
+      "multi_step",
+      2637
+    ],
+    [
+      "unsupported_function:get_contact_info",
+      327
+    ],
+    [
+      "unsupported_function:ACTION_GET_RINGTONE",
+      312
+    ],
+    [
+      "unsupported_function:ACTION_OPEN_DOCUMENT",
+      306
+    ],
+    [
+      "unsupported_function:ACTION_PICK",
+      305
+    ],
+    [
+      "unsupported_function:ACTION_INSERT_CONTACT",
+      301
+    ],
+    [
+      "unsupported_function:ACTION_GET_CONTENT",
+      300
+    ],
+    [
+      "unsupported_function:ACTION_CREATE_DOCUMENT",
+      300
+    ],
+    [
+      "unsupported_function:get_contact_info_from_uri",
+      296
+    ],
+    [
+      "unsupported_function:ACTION_INSERT_EVENT",
+      296
+    ],
+    [
+      "unsupported_function:ACTION_EDIT_CONTACT",
+      295
+    ],
+    [
+      "unsupported_function:send_email",
+      149
+    ],
+    [
+      "unsupported_kwarg",
+      5
+    ],
+    [
+      "alarm_missing_hour",
+      5
+    ],
+    [
+      "sms_attachments_unsupported",
+      5
+    ],
+    [
+      "timer_bad_duration",
+      2
+    ],
+    [
+      "unsupported_function:get_current_date_plus_days",
+      1
+    ],
+    [
+      "parse_error",
+      1
+    ],
+    [
+      "unsupported_function:ACTION_GET_RINGTone",
+      1
+    ]
+  ],
+  "actions": [
+    [
+      "android.intent.action.VIEW",
+      1153
+    ],
+    [
+      "android.media.action.IMAGE_CAPTURE",
+      317
+    ],
+    [
+      "android.intent.action.DIAL",
+      315
+    ],
+    [
+      "android.media.action.STILL_IMAGE_CAMERA",
+      312
+    ],
+    [
+      "android.media.action.VIDEO_CAPTURE",
+      310
+    ],
+    [
+      "android.intent.action.SET_TIMER",
+      310
+    ],
+    [
+      "android.media.action.VIDEO_CAMERA",
+      307
+    ],
+    [
+      "android.intent.action.SHOW_ALARMS",
+      304
+    ],
+    [
+      "android.intent.action.SET_ALARM",
+      296
+    ],
+    [
+      "android.intent.action.SENDTO",
+      295
+    ],
+    [
+      "android.settings.WIRELESS_SETTINGS",
+      32
+    ],
+    [
+      "android.settings.DISPLAY_SETTINGS",
+      28
+    ],
+    [
+      "android.settings.LOCALE_SETTINGS",
+      26
+    ],
+    [
+      "android.settings.WIFI_SETTINGS",
+      26
+    ],
+    [
+      "android.settings.SECURITY_SETTINGS",
+      25
+    ],
+    [
+      "android.settings.DATE_SETTINGS",
+      24
+    ],
+    [
+      "android.settings.AIRPLANE_MODE_SETTINGS",
+      24
+    ],
+    [
+      "android.settings.BLUETOOTH_SETTINGS",
+      22
+    ],
+    [
+      "android.settings.SETTINGS",
+      21
+    ],
+    [
+      "android.settings.APN_SETTINGS",
+      18
+    ],
+    [
+      "android.settings.INTERNAL_STORAGE_SETTINGS",
+      17
+    ],
+    [
+      "android.settings.INPUT_METHOD_SETTINGS",
+      17
+    ],
+    [
+      "android.settings.MEMORY_CARD_SETTINGS",
+      14
+    ],
+    [
+      "android.settings.LOCATION_SOURCE_SETTINGS",
+      14
+    ]
+  ],
+  "examples_by_action": {
+    "android.intent.action.VIEW": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Retrieve details from the contacts database for the URI 'content://contacts/people/404'."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.VIEW\",\"data\":\"content://contacts/people/404\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 5,
+          "function": "ACTION_VIEW_CONTACT"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Identify the cultural impacts of globalization."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.VIEW\",\"data\":\"https://www.google.com/search?q=cultural%20impacts%20of%20globalization\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 11,
+          "function": "web_search"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: What is the best way to reach the nearest police station?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.VIEW\",\"data\":\"geo:0,0?q=nearest%20police%20station\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 16,
+          "function": "search_location"
+        }
+      }
+    ],
+    "android.intent.action.SHOW_ALARMS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Show all alarms that have been configured."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SHOW_ALARMS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 8,
+          "function": "ACTION_SHOW_ALARMS"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Pull up a list of my set alarms."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SHOW_ALARMS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 9,
+          "function": "ACTION_SHOW_ALARMS"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: List all current alarms, please."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SHOW_ALARMS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 12,
+          "function": "ACTION_SHOW_ALARMS"
+        }
+      }
+    ],
+    "android.settings.BLUETOOTH_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Quickly open the Bluetooth settings so I can connect a new device."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.BLUETOOTH_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 13,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Let me connect a new Bluetooth device to my phone."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.BLUETOOTH_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1211,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Please open the connection settings related to Bluetooth devices."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.BLUETOOTH_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2431,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.intent.action.SET_ALARM": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I need a daily wake-up alarm at 7 AM, with vibrations turned off."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_ALARM\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.HOUR\":7,\"android.intent.extra.alarm.MINUTES\":0,\"android.intent.extra.alarm.VIBRATE\":false},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 20,
+          "function": "ACTION_SET_ALARM"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Alert me at half past two PM to feed the cat on weekdays."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_ALARM\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.HOUR\":14,\"android.intent.extra.alarm.MINUTES\":30,\"android.intent.extra.alarm.MESSAGE\":\"Feed the cat\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 109,
+          "function": "ACTION_SET_ALARM"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Could you put a reminder for the gardening session every Tuesday at 4 PM?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_ALARM\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.HOUR\":16,\"android.intent.extra.alarm.MINUTES\":0,\"android.intent.extra.alarm.MESSAGE\":\"Gardening session\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 119,
+          "function": "ACTION_SET_ALARM"
+        }
+      }
+    ],
+    "android.media.action.VIDEO_CAPTURE": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Can you help me use my phone to record a video clip?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 24,
+          "function": "ACTION_VIDEO_CAPTURE"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Launch video capture on my personal cellular device."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 84,
+          "function": "ACTION_VIDEO_CAPTURE"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Guide me to start a video with the integrated camera app on my phone."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 86,
+          "function": "ACTION_VIDEO_CAPTURE"
+        }
+      }
+    ],
+    "android.media.action.VIDEO_CAMERA": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Show me how to start recording video on my mobile app."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 30,
+          "function": "INTENT_ACTION_VIDEO_CAMERA"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How do I make my phone start recording videos through its camera?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 48,
+          "function": "INTENT_ACTION_VIDEO_CAMERA"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How do I put my camera into video session mode from the app?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.VIDEO_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 73,
+          "function": "INTENT_ACTION_VIDEO_CAMERA"
+        }
+      }
+    ],
+    "android.media.action.STILL_IMAGE_CAMERA": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Direct me on how to use the camera for picture-taking purposes."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.STILL_IMAGE_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 32,
+          "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Enable still image mode on my mobile's camera."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.STILL_IMAGE_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 58,
+          "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Prepare the camera app on my mobile to take still photos."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.STILL_IMAGE_CAMERA\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 65,
+          "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+        }
+      }
+    ],
+    "android.intent.action.SET_TIMER": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Create a timer for five hours to slow-roast the turkey in the oven."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_TIMER\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.LENGTH\":18000,\"android.intent.extra.alarm.MESSAGE\":\"Turkey roasting time\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 33,
+          "function": "ACTION_SET_TIMER"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Let us set a 55-minute timer for preparing the project presentation."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_TIMER\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.LENGTH\":3300,\"android.intent.extra.alarm.MESSAGE\":\"Project presentation preparation\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 44,
+          "function": "ACTION_SET_TIMER"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Fire up a 1-minute timer for my speech practice, skip any interruptions."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SET_TIMER\",\"data\":null,\"package\":null,\"extras\":{\"android.intent.extra.alarm.LENGTH\":60,\"android.intent.extra.alarm.MESSAGE\":\"Speech practice\",\"android.intent.extra.alarm.SKIP_UI\":true},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 85,
+          "function": "ACTION_SET_TIMER"
+        }
+      }
+    ],
+    "android.media.action.IMAGE_CAPTURE": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Can I get a picture taken from my phone's camera application?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.IMAGE_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 35,
+          "function": "ACTION_IMAGE_CAPTURE"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I am looking to photograph something, could you start my phone's camera?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.IMAGE_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 99,
+          "function": "ACTION_IMAGE_CAPTURE"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Launch the photo capture session via my phone camera now."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.media.action.IMAGE_CAPTURE\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 102,
+          "function": "ACTION_IMAGE_CAPTURE"
+        }
+      }
+    ],
+    "android.intent.action.SENDTO": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Can you help me send a message regarding 'Volunteer Opportunities' to phone 555-1190, mentioning 'Join our community cleanup initiative this Saturday. We need volunteers!'"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SENDTO\",\"data\":\"smsto:555-1190\",\"package\":null,\"extras\":{\"sms_body\":\"Join our community cleanup initiative this Saturday. We need volunteers!\",\"android.intent.extra.SUBJECT\":\"Volunteer Opportunities\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 49,
+          "function": "send_message"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Forward an update SMS to 555-6262 with subject 'IT System Upgrade' followed by 'Our IT systems are scheduled for an upgrade this Thursday from 10 PM. Expect intermittent services during this time period.'"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SENDTO\",\"data\":\"smsto:555-6262\",\"package\":null,\"extras\":{\"sms_body\":\"Our IT systems are scheduled for an upgrade this Thursday from 10 PM. Expect intermittent services during this time period.\",\"android.intent.extra.SUBJECT\":\"IT System Upgrade\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 51,
+          "function": "send_message"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Would you please send a detailed SMS to number 555-2840, subject marked as 'Hardware Upgrade', with a message 'All workstations will be upgraded to the latest hardware specs this Friday. Expect minor disruptions.'"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.SENDTO\",\"data\":\"smsto:555-2840\",\"package\":null,\"extras\":{\"sms_body\":\"All workstations will be upgraded to the latest hardware specs this Friday. Expect minor disruptions.\",\"android.intent.extra.SUBJECT\":\"Hardware Upgrade\"},\"flags\":[]},\"safety\":{\"requires_confirmation\":true,\"risk\":\"medium\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 61,
+          "function": "send_message"
+        }
+      }
+    ],
+    "android.intent.action.DIAL": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Initialize the phone app with 888-777-6666 for tech support."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.DIAL\",\"data\":\"tel:8887776666\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 70,
+          "function": "dial"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Arrange the dialer to call my manager on 789-555-0303."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.DIAL\",\"data\":\"tel:7895550303\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 140,
+          "function": "dial"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I'm trying to contact customer service, can you put 800-555-0199 in the dialer for me?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.intent.action.DIAL\",\"data\":\"tel:8005550199\",\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 191,
+          "function": "dial"
+        }
+      }
+    ],
+    "android.settings.LOCALE_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I need to update the language and region settings on my laptop. Where can I do this?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCALE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 149,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I need to change the language and input settings, could you open this setting for me?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCALE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 861,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Help me find where to adjust my tablet's language settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCALE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1286,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.SECURITY_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Could you assist me with modifying security features like passwords and screen locks?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SECURITY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 172,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I need to review the security settings on my device, please open it."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SECURITY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1055,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Take me to the security settings for managing app permissions."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SECURITY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1773,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Help me get to the general settings page."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 213,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Launch the general settings overview on my device."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 821,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Open the general settings for me, thanks."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2272,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.WIFI_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Could you get me into the settings to tweak the Wi-Fi networks?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIFI_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 237,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Help me find where to adjust the Wi-Fi settings on this device."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIFI_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 969,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I'm unable to connect to the internet, could you open the Wi-Fi settings for me?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIFI_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1078,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.MEMORY_CARD_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I'd like to connect a new storage device, open the appropriate settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.MEMORY_CARD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 243,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I wish to access the storage management for my memory card."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.MEMORY_CARD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1614,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How can I conserve phone storage? Lead me to check the memory card and storage settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.MEMORY_CARD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1818,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.APN_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I would like to modify the network APN settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.APN_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 284,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How do I find the place to manage APN settings for my mobile data?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.APN_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 458,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I\u2019d like to revise APN settings for better data usage, please open the settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.APN_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 871,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.INTERNAL_STORAGE_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Where can I find settings for internal storage management?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INTERNAL_STORAGE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 400,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Could you assist me in checking the internal storage space? Open the relevant settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INTERNAL_STORAGE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1282,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Activate the settings screen where I can manage internal memory usage."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INTERNAL_STORAGE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1334,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.INPUT_METHOD_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How to configure voice input methods on my tablet?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INPUT_METHOD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 606,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I need to revise input methods for typing. Which settings do I approach?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INPUT_METHOD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 645,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Help me get into the settings for input methods."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.INPUT_METHOD_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2091,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.DISPLAY_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Directly open the display settings to adjust my screen's resolution."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DISPLAY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 648,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Unlock the menu for display settings so I can adjust contrast and wallpaper."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DISPLAY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 696,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Display settings are too dark; please help me go where I can brighten them."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DISPLAY_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 810,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.DATE_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I wish to amend the time and date settings on my device."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DATE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 670,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How can I open the menu to change the system date and time settings?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DATE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 887,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: I believe there's an issue with my phone's internal time. Please open the date and time settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.DATE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1031,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.LOCATION_SOURCE_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Open the location services settings where I can enable GPS tracking."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCATION_SOURCE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 723,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Could you quickly bring up the location services settings screen?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCATION_SOURCE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 3273,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Navigate to the location privacy settings, please."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.LOCATION_SOURCE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 3676,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.WIRELESS_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Please initiate the settings panel where I can handle mobile network types."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIRELESS_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 916,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Help me find the network settings for better connectivity options."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIRELESS_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1558,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Guide me through setting up my mobile network options, please open the respective settings."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.WIRELESS_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 1610,
+          "function": "open_settings"
+        }
+      }
+    ],
+    "android.settings.AIRPLANE_MODE_SETTINGS": [
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: How do I access settings to change the airplane mode configuration?"
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.AIRPLANE_MODE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2191,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Show the panel for configuring the airplane mode settings on my travel phone."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.AIRPLANE_MODE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2228,
+          "function": "open_settings"
+        }
+      },
+      {
+        "prompt": [
+          {
+            "role": "user",
+            "content": "Convert the user request into one executable Android Intent JSON object. Return only valid JSON. Do not wrap it in Markdown.\n\nUser request: Show how to set the device to airplane mode."
+          }
+        ],
+        "completion": [
+          {
+            "role": "assistant",
+            "content": "{\"type\":\"android_intent\",\"intent\":{\"action\":\"android.settings.AIRPLANE_MODE_SETTINGS\",\"data\":null,\"package\":null,\"extras\":{},\"flags\":[]},\"safety\":{\"requires_confirmation\":false,\"risk\":\"low\"}}"
+          }
+        ],
+        "source": {
+          "dataset": "mllmTeam/DroidCall",
+          "split": "train",
+          "row_index": 2812,
+          "function": "open_settings"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,2050 @@
+{
+  "input": "data/sft/droidcall_android_intents/train.jsonl",
+  "sample_size": 100,
+  "seed": 44,
+  "resolved": 100,
+  "unresolved": 0,
+  "actions": [
+    [
+      "android.intent.action.VIEW",
+      30
+    ],
+    [
+      "android.intent.action.DIAL",
+      9
+    ],
+    [
+      "android.media.action.IMAGE_CAPTURE",
+      8
+    ],
+    [
+      "android.media.action.STILL_IMAGE_CAMERA",
+      8
+    ],
+    [
+      "android.intent.action.SENDTO",
+      8
+    ],
+    [
+      "android.media.action.VIDEO_CAPTURE",
+      7
+    ],
+    [
+      "android.intent.action.SET_TIMER",
+      7
+    ],
+    [
+      "android.media.action.VIDEO_CAMERA",
+      6
+    ],
+    [
+      "android.intent.action.SET_ALARM",
+      6
+    ],
+    [
+      "android.intent.action.SHOW_ALARMS",
+      4
+    ],
+    [
+      "android.settings.DISPLAY_SETTINGS",
+      2
+    ],
+    [
+      "android.settings.SECURITY_SETTINGS",
+      1
+    ],
+    [
+      "android.settings.WIRELESS_SETTINGS",
+      1
+    ],
+    [
+      "android.settings.DATE_SETTINGS",
+      1
+    ],
+    [
+      "android.settings.BLUETOOTH_SETTINGS",
+      1
+    ],
+    [
+      "android.settings.INPUT_METHOD_SETTINGS",
+      1
+    ]
+  ],
+  "unresolved_actions": [],
+  "results": [
+    {
+      "line": 1674,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3527,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Direct my phone to start the camera; I'm ready to take some snapshots.",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 2131,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3279,
+        "function": "dial"
+      },
+      "prompt": "Input the number 407-555-0140 into my dialer, I need to schedule a maintenance appointment.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:4075550140",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 2220,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5776,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Is there a way you could help me take a photo with my mobile?",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 2874,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9073,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Access the URI content://contacts/829 to fetch and show the details of the specific contact.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/829",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3531,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 230,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "I am looking for the details of my new contact at content://contacts/27. Please display it.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/27",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 478,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1784,
+        "function": "dial"
+      },
+      "prompt": "Set up the dial screen for 800-900-1000. It's urgent that I contact my insurance agent.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:8009001000",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 724,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 562,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "Get the video mode running on my mobile's camera.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 1555,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3943,
+        "function": "open_settings"
+      },
+      "prompt": "Where can I find and alter the security settings like fingerprint setup and app permissions on my phone?",
+      "intent": {
+        "action": "android.settings.SECURITY_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$SecurityDashboardActivity"
+    },
+    {
+      "line": 923,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 257,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Please create a recurring alarm for 6:20 AM on weekdays to get ready for work.",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 6,
+          "android.intent.extra.alarm.MINUTES": 20
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 1187,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 279,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "I'd like my phone camera set to snapshot mode.",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 120,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8855,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Possibly you could start the camera to take a picture now.",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 921,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 4632,
+        "function": "open_settings"
+      },
+      "prompt": "Prepare the settings page where I can check for network signal options.",
+      "intent": {
+        "action": "android.settings.WIRELESS_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$NetworkDashboardActivity"
+    },
+    {
+      "line": 2330,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2209,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "Trigger the video recorder in my phone's camera app.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 37,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2848,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "I'm looking to retrieve my contact details from URI 'content://contacts/people/107'. Please help.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/107",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 411,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 954,
+        "function": "web_search"
+      },
+      "prompt": "Search for healthy breakfast options.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=healthy%20breakfast%20options",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 642,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 730,
+        "function": "web_search"
+      },
+      "prompt": "Check the weather forecast for this weekend in Miami.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=weather%20forecast%20this%20weekend%20in%20Miami",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 3173,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5525,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Help me set up my camera to take a still image.",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 2105,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8823,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Enable the still shot function on my phone camera.",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 2822,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 336,
+        "function": "send_message"
+      },
+      "prompt": "Send an SMS to 555-8080 with 'Birthday Wishes' as the subject and the message 'Happy birthday! Hope you have a fantastic day filled with joy and laughter.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-8080",
+        "package": null,
+        "extras": {
+          "sms_body": "Happy birthday! Hope you have a fantastic day filled with joy and laughter.",
+          "android.intent.extra.SUBJECT": "Birthday Wishes"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 1242,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9495,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Trigger my mobile's camera for capturing a photo.",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 2841,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6264,
+        "function": "send_message"
+      },
+      "prompt": "Assist me in sending an alert to 555-5678 with the subject 'Urgent: Weather Alert' and body 'Severe weather warning has been issued for your area. Please stay safe.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-5678",
+        "package": null,
+        "extras": {
+          "sms_body": "Severe weather warning has been issued for your area. Please stay safe.",
+          "android.intent.extra.SUBJECT": "Urgent: Weather Alert"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 2597,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7569,
+        "function": "search_location"
+      },
+      "prompt": "Help me find Mount Everest on your map.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "geo:0,0?q=Mount%20Everest",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.maps/com.google.android.maps.MapsActivity"
+    },
+    {
+      "line": 1551,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 693,
+        "function": "dial"
+      },
+      "prompt": "Initialize a call setup with 786-555-1111 to my accountant.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:7865551111",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 2421,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9750,
+        "function": "ACTION_SHOW_ALARMS"
+      },
+      "prompt": "Display all configured alarms on my smartphone.",
+      "intent": {
+        "action": "android.intent.action.SHOW_ALARMS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleApiCalls"
+    },
+    {
+      "line": 1660,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2270,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Reveal the data for the contact at the URI content://contacts/201. I'm preparing a contact list.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/201",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3138,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2961,
+        "function": "dial"
+      },
+      "prompt": "Would you mind setting up a call to my new gym at +1 310 987 6543?",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:+13109876543",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 2832,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 983,
+        "function": "open_settings"
+      },
+      "prompt": "I'm needing to tweak some aspects of my display. Can you open that setting?",
+      "intent": {
+        "action": "android.settings.DISPLAY_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$DisplaySettingsActivity"
+    },
+    {
+      "line": 2745,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7741,
+        "function": "web_search"
+      },
+      "prompt": "Help me retrieve facts about the Nile River using Baidu.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.baidu.com/s?q=facts%20about%20the%20Nile%20River",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 1336,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6831,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "Could you please arrange for a timer lasting 70 minutes for my online course without displaying any notifications?",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 4200,
+          "android.intent.extra.alarm.MESSAGE": "Online course",
+          "android.intent.extra.alarm.SKIP_UI": true
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 1468,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5237,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Help me view the contact located at 'content://contacts/people/8086'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/8086",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 302,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 104,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Unveil the contact details using URI 'content://contacts/people/1212'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/1212",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 1388,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1120,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "Please configure a 45-minute countdown which I can use to cook rice perfectly without any UI distractions.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 2700,
+          "android.intent.extra.alarm.MESSAGE": "Cooking rice",
+          "android.intent.extra.alarm.SKIP_UI": true
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 3447,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7241,
+        "function": "send_message"
+      },
+      "prompt": "Send a brief SMS to 555-1098 with the title 'Welcome aboard' including the text 'Welcome to the team! We are thrilled to have you with us.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-1098",
+        "package": null,
+        "extras": {
+          "sms_body": "Welcome to the team! We are thrilled to have you with us.",
+          "android.intent.extra.SUBJECT": "Welcome aboard"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 1159,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1037,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "Kindly program a 35-second timer to remind me to switch the laundry\u2014to avoid any unwanted UI.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 35,
+          "android.intent.extra.alarm.MESSAGE": "Switch laundry",
+          "android.intent.extra.alarm.SKIP_UI": true
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 2529,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5498,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "I require a quick photo capture using my phone's cam, can you facilitate that?",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 652,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2482,
+        "function": "web_search"
+      },
+      "prompt": "Investigate the steps necessary for effective natural disaster preparedness.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=steps%20for%20effective%20natural%20disaster%20preparedness",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 459,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1744,
+        "function": "open_settings"
+      },
+      "prompt": "Help me change the date and time on my smart watch.",
+      "intent": {
+        "action": "android.settings.DATE_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$DateTimeSettingsActivity"
+    },
+    {
+      "line": 2094,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9342,
+        "function": "open_settings"
+      },
+      "prompt": "Could you take me to the settings where I can turn on Bluetooth?",
+      "intent": {
+        "action": "android.settings.BLUETOOTH_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$ConnectedDeviceDashboardActivity"
+    },
+    {
+      "line": 287,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2153,
+        "function": "web_search"
+      },
+      "prompt": "Pinpoint the latest trends in AI for healthcare.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=latest%20trends%20in%20AI%20for%20healthcare",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 2411,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8033,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Engage my mobile to start the camera for capturing an image.",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 388,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7442,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "Can I activate the device camera for a video shoot through an app?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 1106,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5553,
+        "function": "dial"
+      },
+      "prompt": "Ready my phone to call the emergency contact number 911.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:911",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 3928,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1205,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "Launch a 42-second timer for a short speed drill in my workout.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 42,
+          "android.intent.extra.alarm.MESSAGE": "Speed drill"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 1292,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8496,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Could the camera on my phone be switched to image mode?",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 442,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7594,
+        "function": "send_message"
+      },
+      "prompt": "Can you fire off a text message to 555-9898? Title it 'System Maintenance Update' and write 'We will be performing system maintenance this Sunday at 3 AM. Services will be offline temporarily.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-9898",
+        "package": null,
+        "extras": {
+          "sms_body": "We will be performing system maintenance this Sunday at 3 AM. Services will be offline temporarily.",
+          "android.intent.extra.SUBJECT": "System Maintenance Update"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 3864,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7177,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "I need to record a video with my phone. Can you set up the camera in video mode?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 2562,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 4913,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "What steps must I follow to turn on the video recorder on my mobile?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 3367,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9700,
+        "function": "web_search"
+      },
+      "prompt": "Probe for eco-friendly construction materials.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=eco-friendly%20construction%20materials",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 3972,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3182,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Set the camera to still mode for capturing images.",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 144,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9865,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Please create a quiet, non-vibrating alarm for 7:40 AM daily to practice meditation.",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 7,
+          "android.intent.extra.alarm.MINUTES": 40,
+          "android.intent.extra.alarm.MESSAGE": "Practice meditation",
+          "android.intent.extra.alarm.RINGTONE": "silent",
+          "android.intent.extra.alarm.VIBRATE": false
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 1412,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 678,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "Enable video mode on my handset's camera application.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 1581,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7389,
+        "function": "ACTION_SHOW_ALARMS"
+      },
+      "prompt": "Show a rundown on the alarms that I've placed.",
+      "intent": {
+        "action": "android.intent.action.SHOW_ALARMS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleApiCalls"
+    },
+    {
+      "line": 393,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5813,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Could you fetch the user data from the URI 'content://contacts/people/4000' for my current project update?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/4000",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 1955,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7881,
+        "function": "dial"
+      },
+      "prompt": "I need to reach the toll-free customer support at 800-555-0177; please set it up.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:8005550177",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 1951,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8622,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Can my smartphone's camera be switched to the photo mode?",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 3756,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1595,
+        "function": "ACTION_SHOW_ALARMS"
+      },
+      "prompt": "Can this interface show me what alarms are currently ringing?",
+      "intent": {
+        "action": "android.intent.action.SHOW_ALARMS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleApiCalls"
+    },
+    {
+      "line": 781,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3819,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Can you pull up the detailed contact information for the URI 'content://contacts/people/5533'?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/5533",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 773,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 742,
+        "function": "search_location"
+      },
+      "prompt": "Display the current position of the nearest bus stop.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "geo:0,0?q=nearest%20bus%20stop",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.maps/com.google.android.maps.MapsActivity"
+    },
+    {
+      "line": 533,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6250,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "What's listed for the individual found at 'content://contacts/people/4012'?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/4012",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 1059,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1266,
+        "function": "search_location"
+      },
+      "prompt": "Can your tool tell me where the nearest bus stop is?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "geo:0,0?q=nearest%20bus%20stop",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.maps/com.google.android.maps.MapsActivity"
+    },
+    {
+      "line": 3061,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8912,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "Assist me in turning on my camera\u2019s video mode swiftly.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 1016,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8292,
+        "function": "open_settings"
+      },
+      "prompt": "Access settings to adjust display brightness and wallpaper.",
+      "intent": {
+        "action": "android.settings.DISPLAY_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$DisplaySettingsActivity"
+    },
+    {
+      "line": 3181,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 197,
+        "function": "send_message"
+      },
+      "prompt": "SMS 555-6578 with the line 'Roundtable Reminder' and let them know 'Reminder: You are invited to our executive roundtable discussion this Wednesday at 3 PM, Board Room 4.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-6578",
+        "package": null,
+        "extras": {
+          "sms_body": "Reminder: You are invited to our executive roundtable discussion this Wednesday at 3 PM, Board Room 4.",
+          "android.intent.extra.SUBJECT": "Roundtable Reminder"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 202,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 4326,
+        "function": "open_settings"
+      },
+      "prompt": "Please guide me to the part where I can change the input methods for texting.",
+      "intent": {
+        "action": "android.settings.INPUT_METHOD_SETTINGS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=1 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.settings/.Settings$AvailableVirtualKeyboardActivity"
+    },
+    {
+      "line": 178,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3830,
+        "function": "dial"
+      },
+      "prompt": "Load up the digits 999 for an urgent call from the dialer.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:999",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 2760,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1364,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "I'm looking to reconnect with an old classmate. Can you show me their details via URI 'content://contacts/people/3333'?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/3333",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3935,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9613,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "Please explain how to get the video recording functionality working on my handheld device?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 3346,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8417,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Fetch the complete contact profile stored under the URI 'content://contacts/people/496'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/496",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 2785,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1523,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "Can you set my camera to record video now?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 1788,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2200,
+        "function": "send_message"
+      },
+      "prompt": "Could you dispatch a message to 555-4188 under 'Library Notice' that reads 'The library will be undergoing renovations next month and access will be limited.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-4188",
+        "package": null,
+        "extras": {
+          "sms_body": "The library will be undergoing renovations next month and access will be limited.",
+          "android.intent.extra.SUBJECT": "Library Notice"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 2908,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2763,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Set an alarm for my yoga session at 8 every Saturday morning and make sure there is no user interaction required.",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 8,
+          "android.intent.extra.alarm.MINUTES": 0,
+          "android.intent.extra.alarm.MESSAGE": "Yoga session",
+          "android.intent.extra.alarm.SKIP_UI": true
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 155,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2441,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "What information can you give me for the contact stored at content://contacts/753?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/753",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3026,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2998,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "Guide me through the process of initiating a video capture on my tablet.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 2923,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1667,
+        "function": "send_message"
+      },
+      "prompt": "Alert 555-2368 via SMS under the title 'Security Protocol Update' with a notice that states 'Please be advised of a new security protocol effective immediately.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-2368",
+        "package": null,
+        "extras": {
+          "sms_body": "Please be advised of a new security protocol effective immediately.",
+          "android.intent.extra.SUBJECT": "Security Protocol Update"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 2846,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9096,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "I need the contact data for 'content://contacts/people/2424'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/2424",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3019,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1118,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "I need a 22-hour timer for a day-long fasting period.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 79200,
+          "android.intent.extra.alarm.MESSAGE": "Day-long fasting period"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 3459,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1831,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "Can you please enable the still shot setting on my mobile's camera?",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 2677,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6236,
+        "function": "ACTION_SHOW_ALARMS"
+      },
+      "prompt": "Present the alarms currently in operation.",
+      "intent": {
+        "action": "android.intent.action.SHOW_ALARMS",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleApiCalls"
+    },
+    {
+      "line": 3324,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 5479,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "Start the camera on this device for a quick photo shoot.",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 1347,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2039,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Set an alarm to remind me to pick up dry cleaning at 16:30 every Wednesday and Friday, please.",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 16,
+          "android.intent.extra.alarm.MINUTES": 30,
+          "android.intent.extra.alarm.MESSAGE": "Pick up dry cleaning"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 1514,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 124,
+        "function": "web_search"
+      },
+      "prompt": "Investigate current trends in the tech industry using Google.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=current%20trends%20in%20the%20tech%20industry",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 3402,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9674,
+        "function": "search_location"
+      },
+      "prompt": "Find the nearest ATM around me on this map.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "geo:0,0?q=nearest%20ATM",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.maps/com.google.android.maps.MapsActivity"
+    },
+    {
+      "line": 1929,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3600,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Configure a gentle wake-up alarm at 7 AM without vibrations, please.",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 7,
+          "android.intent.extra.alarm.MINUTES": 0,
+          "android.intent.extra.alarm.RINGTONE": "silent",
+          "android.intent.extra.alarm.VIBRATE": false
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 2583,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6208,
+        "function": "ACTION_IMAGE_CAPTURE"
+      },
+      "prompt": "What's the quickest way to start the camera for a photo?",
+      "intent": {
+        "action": "android.media.action.IMAGE_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CaptureActivity"
+    },
+    {
+      "line": 1859,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2099,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Show data for my contact with the following identifier in URI: 'content://contacts/people/106'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/106",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 2417,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9890,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Bring to light the contact's data found through 'content://contacts/people/1885'.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/1885",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 3285,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 761,
+        "function": "search_location"
+      },
+      "prompt": "Can you display Times Square in New York City on this map?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "geo:0,0?q=Times%20Square%20New%20York%20City",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.maps/com.google.android.maps.MapsActivity"
+    },
+    {
+      "line": 2215,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3027,
+        "function": "dial"
+      },
+      "prompt": "Prepare my phone app to dial my lawyer\u2019s new office number: +1 (212) 555 2299.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:+12125552299",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 617,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 3379,
+        "function": "ACTION_SET_ALARM"
+      },
+      "prompt": "Can you configure an alarm to wake me up at 5 AM using a very relaxing ringtone on Sundays?",
+      "intent": {
+        "action": "android.intent.action.SET_ALARM",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.HOUR": 5,
+          "android.intent.extra.alarm.MINUTES": 0,
+          "android.intent.extra.alarm.RINGTONE": "content://relaxing_wakeup"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 956,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 2602,
+        "function": "web_search"
+      },
+      "prompt": "Find competitive programming platforms for beginners.",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=competitive%20programming%20platforms%20for%20beginners",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 1981,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7831,
+        "function": "dial"
+      },
+      "prompt": "Could you input the number 407-555-0138 in the dialer? I need to cancel my gym membership.",
+      "intent": {
+        "action": "android.intent.action.DIAL",
+        "data": "tel:4075550138",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.dialer/com.android.dialer.main.impl.MainActivity"
+    },
+    {
+      "line": 1867,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 240,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "Explain how I can start recording video on my phone through its camera application.",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 3253,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 9410,
+        "function": "send_message"
+      },
+      "prompt": "Transmit a brief note to 555-8080 with the subject line 'System Upgrade' and state in the body 'All systems will undergo an upgrade this Tuesday at 3 AM.'",
+      "intent": {
+        "action": "android.intent.action.SENDTO",
+        "data": "smsto:555-8080",
+        "package": null,
+        "extras": {
+          "sms_body": "All systems will undergo an upgrade this Tuesday at 3 AM.",
+          "android.intent.extra.SUBJECT": "System Upgrade"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.google.android.apps.messaging/.ui.conversation.LaunchConversationActivity"
+    },
+    {
+      "line": 3018,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7306,
+        "function": "INTENT_ACTION_VIDEO_CAMERA"
+      },
+      "prompt": "How can I quickly start recording a video from my smartphone?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 2801,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 4335,
+        "function": "INTENT_ACTION_STILL_IMAGE_CAMERA"
+      },
+      "prompt": "I need assistance with opening the camera on my smartphone in photo mode.",
+      "intent": {
+        "action": "android.media.action.STILL_IMAGE_CAMERA",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.CameraActivity"
+    },
+    {
+      "line": 1417,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 8341,
+        "function": "ACTION_VIEW_CONTACT"
+      },
+      "prompt": "Can we extract contact details for the URI 'content://contacts/people/3535' now?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "content://contacts/people/3535",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\nandroid/com.android.internal.app.ResolverActivity"
+    },
+    {
+      "line": 2525,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 7427,
+        "function": "web_search"
+      },
+      "prompt": "Can you provide the opening hours for the New York Public Library?",
+      "intent": {
+        "action": "android.intent.action.VIEW",
+        "data": "https://www.google.com/search?q=New%20York%20Public%20Library%20opening%20hours",
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x208000 specificIndex=-1 isDefault=true\ncom.android.chrome/com.google.android.apps.chrome.IntentDispatcher"
+    },
+    {
+      "line": 3358,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1882,
+        "function": "ACTION_VIDEO_CAPTURE"
+      },
+      "prompt": "How do I operate the video recording feature on my smartphone?",
+      "intent": {
+        "action": "android.media.action.VIDEO_CAPTURE",
+        "data": null,
+        "package": null,
+        "extras": {},
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.android.camera2/com.android.camera.VideoCamera"
+    },
+    {
+      "line": 3987,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 1517,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "I need a quick timer of 5 minutes for a power nap.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 300
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    },
+    {
+      "line": 3439,
+      "source": {
+        "dataset": "mllmTeam/DroidCall",
+        "split": "train",
+        "row_index": 6146,
+        "function": "ACTION_SET_TIMER"
+      },
+      "prompt": "Program a timer to last 70 minutes, it's for my soccer practice.",
+      "intent": {
+        "action": "android.intent.action.SET_TIMER",
+        "data": null,
+        "package": null,
+        "extras": {
+          "android.intent.extra.alarm.LENGTH": 4200,
+          "android.intent.extra.alarm.MESSAGE": "Soccer practice"
+        },
+        "flags": []
+      },
+      "resolved": true,
+      "resolver_output": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\ncom.google.android.deskclock/com.android.deskclock.HandleSetApiCalls"
+    }
+  ]
+}
