@@ -1,0 +1,2059 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="A live operations room for bounded Agent Org graph runs.">
+  <title>Graphroom — Agent Ops Room</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../tokens.css">
+  <style>
+    /* Prototype layout · all colours and font families resolve through ../tokens.css */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow-x: clip;
+      background: var(--color-paper);
+      color: var(--color-ink);
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    input,
+    select,
+    textarea { font: inherit; }
+
+    button,
+    a,
+    input,
+    select,
+    textarea { -webkit-tap-highlight-color: transparent; }
+
+    button { color: inherit; }
+
+    a { color: inherit; }
+
+    svg { display: block; }
+
+    h1,
+    h2,
+    h3,
+    p,
+    dl,
+    dd,
+    figure { margin: 0; }
+
+    h1,
+    h2,
+    h3 {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: var(--font-display);
+      font-style: normal;
+      line-height: 1.18;
+      letter-spacing: -0.025em;
+    }
+
+    [hidden] { display: none !important; }
+
+    .skip-link {
+      position: fixed;
+      inset-block-start: var(--space-xs);
+      inset-inline-start: var(--space-xs);
+      z-index: var(--z-tooltip);
+      transform: translateY(-150%);
+      padding: var(--space-sm) var(--space-md);
+      border: var(--rule-strong) solid var(--color-focus);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: var(--font-display);
+      text-decoration: none;
+    }
+
+    .skip-link:focus { transform: none; }
+
+    :focus-visible {
+      outline: var(--rule-strong) solid var(--color-focus);
+      outline-offset: var(--space-2xs);
+    }
+
+    .icon {
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: square;
+      stroke-linejoin: miter;
+    }
+
+    .icon--lg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .app-shell {
+      min-height: 100dvh;
+      background: var(--color-paper);
+    }
+
+    .topbar {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: var(--z-sticky);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--space-sm);
+      min-height: 3.5rem;
+      padding: var(--space-xs) clamp(var(--space-md), 3vw, var(--space-xl));
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper);
+    }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      min-height: 2.75rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .wordmark__mark {
+      width: 1.5rem;
+      height: 1.5rem;
+      color: var(--color-accent);
+    }
+
+    .topbar__state {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: var(--space-sm);
+      min-width: 0;
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .topbar__actions { display: flex; gap: var(--space-xs); }
+
+    .simulated-label,
+    .live-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      white-space: nowrap;
+    }
+
+    .simulated-label::before {
+      width: var(--space-xs);
+      height: var(--space-xs);
+      border: var(--rule-thin) solid currentColor;
+      content: "";
+    }
+
+    .live-label::before {
+      width: var(--space-xs);
+      height: var(--space-xs);
+      background: var(--color-accent);
+      content: "";
+    }
+
+    .button,
+    .icon-button,
+    .tab-button,
+    .filter-button,
+    .rail__mode,
+    .queue-button,
+    .node-list__button,
+    .event-chip {
+      position: relative;
+      border: var(--rule-thin) solid var(--color-rule-strong);
+      border-radius: var(--radius-xs);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      cursor: pointer;
+      line-height: 1;
+      transition:
+        background-color var(--dur-short) var(--ease-out),
+        color var(--dur-short) var(--ease-out),
+        transform var(--dur-micro) var(--ease-out);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      min-height: 2.75rem;
+      padding: var(--space-xs) var(--space-md);
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .button--primary {
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: var(--color-accent-ink);
+    }
+
+    .button--quiet { border-color: var(--color-rule); }
+
+    .button--text {
+      border-color: transparent;
+      background: transparent;
+      text-decoration: underline;
+      text-decoration-color: var(--color-rule-strong);
+      text-underline-offset: var(--space-2xs);
+    }
+
+    .button:active,
+    .icon-button:active,
+    .tab-button:active,
+    .filter-button:active,
+    .rail__mode:active,
+    .queue-button:active,
+    .node-list__button:active,
+    .event-chip:active { transform: translateY(var(--rule-thin)); }
+
+    .button:disabled,
+    .icon-button:disabled,
+    .tab-button:disabled,
+    .filter-button:disabled,
+    .rail__mode:disabled,
+    .queue-button:disabled,
+    .node-list__button:disabled,
+    .event-chip:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button[data-state="loading"] {
+      cursor: wait;
+      pointer-events: none;
+    }
+
+    .button[data-state="loading"] .button__label { opacity: 0.45; }
+
+    .button[data-state="loading"]::after {
+      position: absolute;
+      width: var(--space-md);
+      height: var(--space-md);
+      border: var(--rule-strong) solid currentColor;
+      border-inline-end-color: transparent;
+      border-radius: var(--radius-round);
+      content: "";
+      animation: spin 900ms linear infinite;
+    }
+
+    .button[data-state="error"] {
+      border-style: dashed;
+      background: var(--color-paper-3);
+    }
+
+    .button[data-state="success"]::before { content: "✓"; }
+
+    .icon-button {
+      display: inline-grid;
+      width: 2.75rem;
+      height: 2.75rem;
+      place-items: center;
+      padding: 0;
+    }
+
+    .screen {
+      min-width: 0;
+      scroll-margin-block-start: 3.5rem;
+    }
+
+    .run-brief {
+      display: grid;
+      gap: var(--space-sm) var(--space-lg);
+      padding: var(--space-sm) clamp(var(--space-md), 3vw, var(--space-xl));
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper-2);
+    }
+
+    .run-brief__objective {
+      display: grid;
+      gap: var(--space-xs);
+      min-width: 0;
+    }
+
+    .meta-label {
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .run-brief h1 {
+      max-width: 64ch;
+      color: var(--color-ink-2);
+      font-family: var(--font-body);
+      font-size: clamp(var(--text-base), 1.35vw, var(--text-md));
+      font-weight: 600;
+      letter-spacing: -0.012em;
+      line-height: 1.35;
+    }
+
+    .run-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+      border-inline-start: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .run-stat {
+      min-width: 0;
+      padding: var(--space-xs) var(--space-xs) var(--space-2xs);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      border-inline-end: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .run-stat dt {
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+      white-space: nowrap;
+    }
+
+    .run-stat dd {
+      margin-block-start: var(--space-2xs);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      line-height: 1.2;
+      overflow-wrap: normal;
+    }
+
+    .run-stat--attention dd { color: var(--color-accent); }
+
+    .event-summary {
+      display: grid;
+      gap: var(--space-xs);
+      min-width: 0;
+      padding-block-start: var(--space-xs);
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .event-summary__item {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .event-summary__item strong {
+      color: var(--color-ink);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .event-summary__action {
+      justify-self: start;
+      min-height: 2.25rem;
+      padding-block: var(--space-2xs);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      min-width: 0;
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .rail,
+    .graph-panel,
+    .inspector { min-width: 0; }
+
+    .inspector { scroll-margin-block-start: 3.5rem; }
+
+    .graph-panel { order: 1; }
+    .rail { order: 2; }
+    .inspector { order: 3; }
+
+    .rail {
+      display: grid;
+      gap: var(--space-lg);
+      padding: var(--space-md) clamp(var(--space-md), 3vw, var(--space-xl));
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper-2);
+    }
+
+    .rail__mode-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2xs);
+      min-width: 12rem;
+    }
+
+    .rail__mode {
+      min-height: 2.75rem;
+      padding: var(--space-xs);
+      border-color: var(--color-rule);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .rail__mode[aria-pressed="true"] {
+      border-color: var(--color-ink);
+      background: var(--color-ink);
+      color: var(--color-paper);
+    }
+
+    .rail__section { min-width: 0; }
+
+    .rail__section + .rail__section { margin-block-start: 0; }
+
+    .rail__heading {
+      margin-block-end: var(--space-xs);
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .queue-list,
+    .node-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2xs);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .node-list {
+      display: flex;
+      gap: var(--space-xs);
+      overflow-x: auto;
+      padding-block-end: var(--space-xs);
+      scroll-snap-type: inline proximity;
+      scrollbar-width: thin;
+    }
+
+    .node-list li {
+      flex: 0 0 min(15rem, 78vw);
+      min-width: 0;
+      scroll-snap-align: start;
+    }
+
+    .queue-button,
+    .node-list__button {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--space-xs);
+      width: 100%;
+      min-height: 2.75rem;
+      padding: var(--space-xs);
+      border-color: transparent;
+      text-align: start;
+    }
+
+    .queue-button__label,
+    .node-list__name {
+      overflow: hidden;
+      font-size: var(--text-sm);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .queue-button__count {
+      min-width: 1.5rem;
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+      text-align: end;
+    }
+
+    .queue-button[data-queue="approvals"] .queue-button__count { color: var(--color-accent); }
+
+    .node-list__button[aria-current="true"] {
+      background: var(--color-paper);
+      box-shadow: inset var(--rule-strong) 0 0 var(--color-accent);
+    }
+
+    .node-list__state {
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+      white-space: nowrap;
+    }
+
+    .state-mark {
+      display: inline-grid;
+      width: var(--space-md);
+      height: var(--space-md);
+      place-items: center;
+      border: var(--rule-thin) solid var(--color-rule-strong);
+      border-radius: var(--radius-round);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      line-height: 1;
+    }
+
+    .state-mark--attention {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+
+    .state-mark--pending { border-style: dashed; }
+
+    .graph-panel {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0, auto);
+      background: var(--color-paper);
+    }
+
+    .panel-header,
+    .inspector__header,
+    .timeline__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .panel-header__copy,
+    .inspector__title-wrap { min-width: 0; }
+
+    .panel-header {
+      align-items: center;
+      padding-inline: clamp(var(--space-md), 3vw, var(--space-xl));
+    }
+
+    .panel-header__tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-xs) var(--space-md);
+      min-width: 0;
+    }
+
+    .graph-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      padding-inline-start: var(--space-sm);
+      border-inline-start: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .graph-toolbar .icon-button {
+      width: 2.75rem;
+      height: 2.75rem;
+      min-height: 2.75rem;
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      font-weight: 600;
+    }
+
+    .graph-toolbar .button {
+      min-height: 2.75rem;
+      padding: var(--space-xs) var(--space-sm);
+    }
+
+    .graph-zoom-value {
+      min-width: 3.75rem;
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .panel-header h2,
+    .inspector h2,
+    .timeline h2 {
+      font-size: var(--text-md);
+      font-weight: 700;
+    }
+
+    .panel-header p,
+    .inspector__subtitle,
+    .timeline__subtitle {
+      margin-block-start: var(--space-2xs);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .graph-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-sm);
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      white-space: nowrap;
+    }
+
+    .legend-line {
+      width: 1.5rem;
+      border-block-start: var(--rule-thin) solid var(--color-rule-strong);
+    }
+
+    .legend-line--active { border-color: var(--color-accent); }
+
+    .legend-line--pending { border-style: dashed; }
+
+    .graph-canvas {
+      position: relative;
+      display: grid;
+      grid-template-rows: minmax(26rem, auto) auto;
+      min-width: 0;
+    }
+
+    .graph-viewport {
+      position: relative;
+      display: grid;
+      min-width: 0;
+      min-height: 26rem;
+      place-items: center start;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .graph-viewport::before {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-base);
+      background-image:
+        linear-gradient(var(--color-rule-2) var(--rule-thin), transparent var(--rule-thin)),
+        linear-gradient(90deg, var(--color-rule-2) var(--rule-thin), transparent var(--rule-thin));
+      background-size: var(--space-xl) var(--space-xl);
+      content: "";
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .org-graph {
+      position: relative;
+      z-index: var(--z-raised);
+      width: min(100%, 62rem);
+      height: auto;
+      color: var(--color-ink);
+    }
+
+    .org-graph--desktop { display: none; }
+    .org-graph--mobile {
+      max-width: 30rem;
+      justify-self: center;
+    }
+
+    .graph-edge {
+      fill: none;
+      stroke: var(--color-rule-strong);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .graph-edge--pending { stroke-dasharray: 6 5; }
+
+    .graph-edge--traversed { stroke-dasharray: none; }
+
+    .graph-edge--active {
+      stroke: var(--color-accent);
+      stroke-dasharray: none;
+      stroke-width: 2;
+    }
+
+    .edge-arrow--neutral { fill: var(--color-rule-strong); }
+
+    .edge-arrow--active { fill: var(--color-accent); }
+
+    .graph-node,
+    .approval-gate { cursor: pointer; }
+
+    .node-body {
+      fill: var(--color-paper);
+      stroke: var(--color-ink);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .graph-node--verdict .node-body { stroke-dasharray: 5 4; }
+
+    .graph-node[data-selected="true"] .node-body {
+      stroke: var(--color-accent);
+      stroke-width: 2.5;
+    }
+
+    .graph-node:focus-visible .node-body,
+    .approval-gate:focus-visible .gate-shell {
+      stroke: var(--color-focus);
+      stroke-width: 3;
+    }
+
+    .graph-node:active .node-body,
+    .approval-gate:active .gate-shell { fill: var(--color-paper-3); }
+
+    .graph-node[aria-disabled="true"],
+    .approval-gate[aria-disabled="true"] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .node-divider {
+      stroke: var(--color-rule);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .node-role {
+      fill: var(--color-ink);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .node-state {
+      fill: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .node-label {
+      fill: var(--color-muted);
+      font-family: var(--font-body);
+      font-size: 10px;
+    }
+
+    .node-value {
+      fill: var(--color-ink-2);
+      font-family: var(--font-body);
+      font-size: 12px;
+    }
+
+    .node-code {
+      fill: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: 9px;
+    }
+
+    .node-ring {
+      fill: var(--color-paper);
+      stroke: var(--color-rule-strong);
+      stroke-width: 1.5;
+    }
+
+    .node-ring--complete {
+      fill: var(--color-ink);
+      stroke: var(--color-ink);
+    }
+
+    .node-ring--attention {
+      stroke: var(--color-accent);
+      stroke-width: 2;
+    }
+
+    .node-ring--pending { stroke-dasharray: 3 2; }
+
+    .node-check {
+      fill: none;
+      stroke: var(--color-paper);
+      stroke-width: 1.5;
+    }
+
+    .node-mark {
+      fill: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .node-ring--complete + .node-mark { fill: var(--color-paper); }
+
+    .edge-label { paint-order: stroke; stroke: var(--color-paper); stroke-width: 4px; }
+
+    .node-badge {
+      fill: var(--color-paper-2);
+      stroke: var(--color-rule);
+      stroke-width: 1;
+    }
+
+    .gate-shell {
+      fill: var(--color-paper);
+      stroke: var(--color-accent);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .gate-bar {
+      fill: var(--color-accent);
+      transform-box: fill-box;
+      transform-origin: center;
+      transition:
+        transform var(--dur-long) var(--ease-out),
+        opacity var(--dur-short) var(--ease-out);
+    }
+
+    .app-shell[data-run-state="approved"] .gate-bar--left { transform: translateX(-5px); }
+    .app-shell[data-run-state="approved"] .gate-bar--right { transform: translateX(5px); }
+
+    .gate-label {
+      fill: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .terminal-shell {
+      fill: var(--color-paper-2);
+      stroke: var(--color-rule-strong);
+      stroke-width: 1.5;
+    }
+
+    .handoff-token {
+      fill: var(--color-accent);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .handoff-token--incoming.is-playing {
+      animation: token-incoming 1.1s var(--ease-out) forwards;
+    }
+
+    .handoff-token--resume.is-playing {
+      animation: token-resume 900ms var(--ease-out) forwards;
+    }
+
+    .app-shell:not([data-run-state="approved"]) .post-approval,
+    .app-shell[data-run-state="approved"] .pre-approval,
+    .graph-panel.mode-run .org-only,
+    .graph-panel.mode-org .run-only { display: none; }
+
+    .graph-caption {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      min-height: 3rem;
+      padding: var(--space-xs) var(--space-md);
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .causal-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      color: var(--color-ink);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+    }
+
+    .causal-label::before {
+      width: 2rem;
+      border-block-start: var(--rule-strong) solid var(--color-accent);
+      content: "";
+    }
+
+    .inspector {
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper);
+      scroll-margin-block-start: 3.5rem;
+    }
+
+    .inspector__status {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      white-space: nowrap;
+    }
+
+    .inspector__tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: var(--space-2xs);
+      overflow-x: auto;
+      padding: var(--space-xs) var(--space-md);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      scrollbar-width: thin;
+    }
+
+    .tab-button,
+    .filter-button {
+      min-height: 2.75rem;
+      padding: var(--space-xs) var(--space-sm);
+      border-color: transparent;
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .tab-button[aria-selected="true"],
+    .filter-button[aria-pressed="true"] {
+      border-color: var(--color-ink);
+      background: var(--color-ink);
+      color: var(--color-paper);
+    }
+
+    .inspector__content {
+      display: grid;
+      gap: var(--space-md);
+      padding: var(--space-md) clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-xl);
+    }
+
+    .inspector__content.is-changing {
+      animation: inspector-change var(--dur-short) var(--ease-out);
+    }
+
+    .fact-list {
+      display: grid;
+      gap: 0;
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .fact-row {
+      display: grid;
+      grid-template-columns: minmax(6.5rem, 0.42fr) minmax(0, 1fr);
+      gap: var(--space-sm);
+      padding-block: var(--space-sm);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .fact-row dt {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .fact-row dd {
+      min-width: 0;
+      font-size: var(--text-sm);
+      overflow-wrap: anywhere;
+    }
+
+    .fact-row code,
+    .event-code,
+    .code-block {
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+    }
+
+    .code-block {
+      margin: 0;
+      padding: var(--space-sm);
+      overflow: auto;
+      border-block: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper-2);
+      color: var(--color-ink-2);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .contract-source {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: inherit;
+      color: inherit;
+    }
+
+    .approval-docket {
+      display: grid;
+      gap: var(--space-sm);
+      padding: var(--space-md);
+      border: var(--rule-strong) solid var(--color-accent);
+      border-radius: var(--radius-xs);
+      background: var(--color-paper);
+    }
+
+    .approval-docket__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+
+    .approval-docket h3 {
+      font-size: var(--text-base);
+      font-weight: 700;
+    }
+
+    .approval-docket__risk {
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .approval-docket .fact-row {
+      grid-template-columns: 5.5rem minmax(0, 1fr);
+      gap: var(--space-xs);
+      padding-block: var(--space-xs);
+    }
+
+    .approval-docket__summary {
+      color: var(--color-ink-2);
+      font-size: var(--text-sm);
+    }
+
+    .approval-docket__summary strong {
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .approval-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    label {
+      display: block;
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 2.75rem;
+      margin-block-start: var(--space-2xs);
+      padding: var(--space-xs) var(--space-sm);
+      border: var(--rule-thin) solid var(--color-rule-strong);
+      border-radius: var(--radius-xs);
+      outline: var(--rule-strong) solid transparent;
+      outline-offset: var(--rule-thin);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      transition: background-color var(--dur-short) var(--ease-out);
+    }
+
+    textarea {
+      min-height: 6rem;
+      resize: vertical;
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline-color: var(--color-focus);
+      border-color: var(--color-ink-2);
+    }
+
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    input[aria-invalid="true"],
+    textarea[aria-invalid="true"] {
+      border-style: dashed;
+      background: var(--color-paper-3);
+    }
+
+    .field-help {
+      min-height: 1lh;
+      margin-block-start: var(--space-2xs);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .status-note {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      padding: var(--space-sm);
+      border-block: var(--rule-thin) solid var(--color-rule);
+      background: var(--color-paper-2);
+      font-size: var(--text-sm);
+    }
+
+    .timeline {
+      min-width: 0;
+      background: var(--color-paper);
+      scroll-margin-block-start: 3.5rem;
+    }
+
+    .timeline__header {
+      align-items: center;
+      padding-block: var(--space-sm);
+    }
+
+    .timeline__controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-xs);
+    }
+
+    .timeline__range {
+      display: grid;
+      grid-template-columns: minmax(5.5rem, auto) minmax(7rem, 1fr) auto;
+      align-items: center;
+      gap: var(--space-xs);
+      min-width: min(100%, 18rem);
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      margin: var(--space-sm) clamp(var(--space-md), 3vw, var(--space-xl)) 0;
+    }
+
+    .timeline__range input {
+      min-height: 2.75rem;
+      margin: 0;
+      padding: 0;
+      border-color: transparent;
+      accent-color: var(--color-accent);
+    }
+
+    .timeline__list {
+      display: grid;
+      margin: 0;
+      padding: var(--space-sm) clamp(var(--space-md), 3vw, var(--space-xl));
+      list-style: none;
+    }
+
+    .timeline__list li {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      gap: var(--space-sm);
+      padding-block: var(--space-xs);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      font-size: var(--text-sm);
+    }
+
+    .timeline__time {
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline__lanes { display: none; }
+
+    .timeline__foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs) var(--space-md);
+      padding: var(--space-xs) var(--space-md);
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+    }
+
+    .agent-ledger {
+      min-width: 0;
+      padding-block-end: var(--space-xl);
+      border-block-start: var(--rule-strong) solid var(--color-ink);
+      background: var(--color-paper);
+      scroll-margin-block-start: 3.5rem;
+    }
+
+    .agent-ledger__header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding: var(--space-lg) clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-md);
+    }
+
+    .agent-ledger__header h2 {
+      font-size: var(--text-md);
+      font-weight: 700;
+    }
+
+    .agent-ledger__header p {
+      max-width: 58ch;
+      margin-block-start: var(--space-2xs);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .progress-path {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin: 0;
+      padding: 0 clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-md);
+      overflow-x: auto;
+      list-style: none;
+      scrollbar-width: thin;
+    }
+
+    .progress-step {
+      position: relative;
+      display: flex;
+      flex: 1 0 10rem;
+      min-width: 0;
+      align-items: center;
+    }
+
+    .progress-step:not(:last-child)::after {
+      width: clamp(var(--space-md), 3vw, var(--space-xl));
+      border-block-start: var(--rule-thin) solid var(--color-rule-strong);
+      content: "";
+    }
+
+    .progress-step__button {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      align-items: center;
+      gap: 0 var(--space-xs);
+      width: 100%;
+      min-height: 3rem;
+      padding: var(--space-xs);
+      border: var(--rule-thin) solid transparent;
+      border-radius: var(--radius-xs);
+      background: transparent;
+      color: var(--color-muted);
+      cursor: pointer;
+      text-align: start;
+    }
+
+    .progress-step__button .state-mark {
+      grid-row: 1 / -1;
+    }
+
+    .progress-step__button[aria-current="true"] {
+      border-color: var(--color-accent);
+      background: var(--color-accent-soft);
+      color: var(--color-ink);
+    }
+
+    .progress-step__name {
+      overflow: hidden;
+      color: var(--color-ink);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .progress-step__state {
+      overflow: hidden;
+      font-size: var(--text-xs);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .agent-table-wrap {
+      margin-inline: clamp(var(--space-md), 3vw, var(--space-xl));
+      overflow-x: auto;
+      border-block: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .agent-table {
+      width: 100%;
+      min-width: 64rem;
+      border-collapse: collapse;
+      table-layout: fixed;
+      text-align: start;
+    }
+
+    .agent-table th,
+    .agent-table td {
+      padding: var(--space-sm);
+      border-block-end: var(--rule-thin) solid var(--color-rule);
+      overflow-wrap: anywhere;
+      text-align: start;
+      vertical-align: top;
+    }
+
+    .agent-table thead th {
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .agent-table tbody th,
+    .agent-table td {
+      color: var(--color-ink-2);
+      font-size: var(--text-sm);
+      font-weight: 400;
+    }
+
+    .agent-table thead th:nth-child(1) { width: 16%; }
+    .agent-table thead th:nth-child(2) { width: 12%; }
+    .agent-table thead th:nth-child(3) { width: 29%; }
+    .agent-table thead th:nth-child(4) { width: 9%; }
+    .agent-table thead th:nth-child(5) { width: 21%; }
+    .agent-table thead th:nth-child(6) { width: 13%; }
+
+    .agent-table tbody tr[data-selected="true"] {
+      background: var(--color-accent-soft);
+      box-shadow: inset var(--rule-strong) 0 0 var(--color-accent);
+    }
+
+    .agent-table__select {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--color-ink);
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      cursor: pointer;
+      text-align: start;
+    }
+
+    .agent-table__mono {
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .launch-screen {
+      display: grid;
+      min-height: calc(100dvh - 3.5rem);
+      align-content: start;
+      padding: clamp(var(--space-md), 4vw, var(--space-2xl));
+    }
+
+    .launch-screen__top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-block-end: var(--space-xl);
+    }
+
+    .launch-screen__top h1 {
+      max-width: 18ch;
+      font-size: var(--text-display);
+      font-weight: 700;
+    }
+
+    .launch-screen__top p {
+      max-width: 58ch;
+      margin-block-start: var(--space-sm);
+      color: var(--color-muted);
+    }
+
+    .launch-grid {
+      display: grid;
+      gap: var(--space-xl);
+      min-width: 0;
+    }
+
+    .org-preview,
+    .run-form {
+      min-width: 0;
+      border-block-start: var(--rule-strong) solid var(--color-ink);
+      padding-block-start: var(--space-md);
+    }
+
+    .org-preview h2,
+    .run-form h2 {
+      font-size: var(--text-lg);
+      font-weight: 700;
+    }
+
+    .org-preview__meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs) var(--space-md);
+      margin-block: var(--space-sm) var(--space-lg);
+      color: var(--color-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+    }
+
+    .launch-graph-scroll {
+      width: 100%;
+      overflow-x: auto;
+      border-block: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .launch-graph { min-height: 13rem; }
+
+    .timeline-event--attention { color: var(--color-accent); }
+
+    .validation-list {
+      display: grid;
+      gap: var(--space-xs);
+      margin: var(--space-md) 0 0;
+      padding: 0;
+      list-style: none;
+      font-size: var(--text-sm);
+    }
+
+    .validation-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-xs);
+    }
+
+    .form-grid {
+      display: grid;
+      gap: var(--space-md);
+      margin-block-start: var(--space-lg);
+    }
+
+    .form-grid--two { grid-template-columns: minmax(0, 1fr); }
+
+    .radio-group {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2xs);
+      margin-block-start: var(--space-xs);
+    }
+
+    .radio-option {
+      position: relative;
+      min-width: 0;
+    }
+
+    .radio-option input {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-raised);
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .radio-option span {
+      display: grid;
+      min-height: 2.75rem;
+      place-items: center;
+      padding: var(--space-xs);
+      border: var(--rule-thin) solid var(--color-rule-strong);
+      border-radius: var(--radius-xs);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .radio-option input:checked + span {
+      border-color: var(--color-ink);
+      background: var(--color-ink);
+      color: var(--color-paper);
+    }
+
+    .radio-option input:focus-visible + span {
+      outline: var(--rule-strong) solid var(--color-focus);
+      outline-offset: var(--space-2xs);
+    }
+
+    .radio-option input:disabled + span {
+      background: var(--color-paper-3);
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+      padding-block-start: var(--space-md);
+      border-block-start: var(--rule-thin) solid var(--color-rule);
+    }
+
+    .form-status {
+      min-height: 1lh;
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .button:hover,
+      .icon-button:hover,
+      .tab-button:hover,
+      .filter-button:hover,
+      .rail__mode:hover,
+      .queue-button:hover,
+      .node-list__button:hover,
+      .progress-step__button:hover,
+      .agent-table__select:hover,
+      .event-chip:hover { background: var(--color-paper-3); }
+
+      .button--primary:hover {
+        background: var(--color-focus);
+      }
+
+      .button--text:hover { background: transparent; }
+
+      input:hover,
+      select:hover,
+      textarea:hover { background: var(--color-paper-2); }
+
+      .graph-node:hover .node-body { stroke: var(--color-accent); }
+    }
+
+    @media (pointer: coarse) {
+      .button,
+      .icon-button,
+      .tab-button,
+      .filter-button,
+      .rail__mode,
+      .queue-button,
+      .node-list__button,
+      .progress-step__button,
+      .agent-table__select,
+      input,
+      select,
+      textarea { min-height: 3rem; }
+    }
+
+    @media (min-width: 40rem) {
+      .run-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+      .event-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      .queue-list,
+      .node-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+      .form-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      .launch-grid { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
+    }
+
+    @media (max-width: 59.99rem) {
+      .panel-header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .panel-header__tools {
+        justify-content: flex-start;
+      }
+
+      .graph-toolbar { display: none; }
+    }
+
+    @media (min-width: 60rem) {
+      .ops-screen {
+        min-height: calc(100dvh - 3.5rem);
+      }
+
+      .run-brief {
+        grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.55fr);
+        align-items: center;
+      }
+
+      .run-brief__objective {
+        grid-column: 1;
+        grid-row: 1;
+      }
+
+      .run-stats {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+
+      .event-summary {
+        grid-column: 2;
+        grid-row: 1;
+        grid-template-columns: minmax(0, 1fr);
+        padding-block-start: 0;
+        border-block-start: 0;
+      }
+
+      .rail,
+      .graph-panel,
+      .inspector {
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .rail {
+        grid-template-columns: minmax(15rem, 0.36fr) minmax(0, 1fr);
+        align-items: start;
+      }
+
+      .queue-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      .graph-panel {
+        grid-template-rows: auto auto;
+      }
+
+      .graph-viewport {
+        min-height: clamp(34rem, 65dvh, 48rem);
+      }
+
+      .org-graph--mobile { display: none; }
+      .org-graph--desktop { display: block; }
+
+      .inspector__header,
+      .timeline__header {
+        padding-inline: clamp(var(--space-md), 3vw, var(--space-xl));
+      }
+
+      .inspector__content {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 31rem), 1fr));
+      }
+
+      .contract-source {
+        grid-column: 1 / -1;
+      }
+
+      .timeline__list {
+        display: grid;
+      }
+
+      .timeline__lanes { display: none; }
+    }
+
+    @media (min-width: 72rem) {
+      .run-brief {
+        grid-template-columns: minmax(16rem, 1.25fr) minmax(0, 2fr) minmax(13rem, 0.8fr);
+      }
+
+      .run-brief__objective,
+      .run-stats,
+      .event-summary {
+        grid-column: auto;
+        grid-row: auto;
+      }
+    }
+
+    @media (max-width: 39.99rem) {
+      .topbar {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .topbar__state { display: none; }
+
+      .topbar__actions { grid-column: 2; }
+    }
+
+    @media (min-width: 90rem) {
+      .run-brief { grid-template-columns: minmax(22rem, 1.4fr) minmax(38rem, 2fr) minmax(18rem, 0.8fr); }
+      .rail { grid-template-columns: minmax(17rem, 0.3fr) minmax(0, 1fr); }
+    }
+
+    @media (max-width: 27rem) {
+      .topbar__state .live-label { display: none; }
+      .button__optional { display: none; }
+      .node-list { grid-template-columns: minmax(0, 1fr); }
+      .graph-legend { display: none; }
+      .fact-row { grid-template-columns: minmax(0, 1fr); }
+      .radio-group { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 22rem) {
+      .simulated-label {
+        gap: 0;
+        font-size: 0;
+      }
+
+      .simulated-label::after {
+        margin-inline-start: var(--space-2xs);
+        content: "SIM";
+        font-size: var(--text-xs);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 150ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 150ms !important;
+      }
+
+      .handoff-token { display: none; }
+    }
+
+    @keyframes spin { to { transform: rotate(1turn); } }
+
+    @keyframes inspector-change {
+      from { opacity: 0; transform: translateY(var(--space-xs)); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes token-incoming {
+      0% { opacity: 0; transform: translateX(-7rem); }
+      15% { opacity: 1; }
+      88% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(2rem); }
+    }
+
+    @keyframes token-resume {
+      0% { opacity: 0; transform: translateX(0); }
+      15% { opacity: 1; }
+      88% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(7rem); }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <symbol id="icon-plus" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12"/></symbol>
+    <symbol id="icon-graph" viewBox="0 0 16 16"><rect x="1.5" y="2" width="4" height="4"/><rect x="10.5" y="10" width="4" height="4"/><path d="M5.5 4h4a3 3 0 0 1 3 3v3"/></symbol>
+    <symbol id="icon-inbox" viewBox="0 0 16 16"><path d="M2 3h12v9H9.8L8 14l-1.8-2H2z"/><path d="M5 7h6"/></symbol>
+    <symbol id="icon-question" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.5 6a1.6 1.6 0 1 1 2.5 1.3c-.7.5-1 1-1 1.7M8 11.7v.1"/></symbol>
+    <symbol id="icon-assumption" viewBox="0 0 16 16"><path d="M8 1.5 14 13H2z"/><path d="M8 5v4M8 11.5v.1"/></symbol>
+    <symbol id="icon-artifact" viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z"/><path d="M10 1.5v3h3M5.5 8h5M5.5 11h4"/></symbol>
+    <symbol id="icon-memory" viewBox="0 0 16 16"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5v4c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-4M2.5 7.5v4c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-4"/></symbol>
+    <symbol id="icon-replay" viewBox="0 0 16 16"><path d="M3 5V1.5L1.2 3.3M3 3.2A6 6 0 1 1 2 10"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 16 16"><path d="m2.5 8.5 3.3 3.3L13.5 4"/></symbol>
+    <symbol id="icon-x" viewBox="0 0 16 16"><path d="m3 3 10 10M13 3 3 13"/></symbol>
+    <symbol id="icon-back" viewBox="0 0 16 16"><path d="m9.5 2.5-5 5.5 5 5.5M5 8h9"/></symbol>
+  </svg>
+
+  <div class="app-shell" id="appShell" data-run-state="waiting">
+    <header class="topbar" aria-label="Application header">
+      <a class="wordmark" href="#" id="homeLink" aria-label="Graphroom home">
+        <svg class="wordmark__mark icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="1.5" y="2" width="6" height="6"/>
+          <rect x="16.5" y="16" width="6" height="6"/>
+          <path d="M7.5 5h6a3 3 0 0 1 3 3v8"/>
+          <path d="m13.5 13 3 3 3-3"/>
+        </svg>
+        <span>Graphroom</span>
+      </a>
+
+      <div class="topbar__state" aria-label="Runtime state">
+        <span class="simulated-label" id="runtimeLabel">Loading runtime</span>
+        <span class="live-label" id="runIdLabel">No active run</span>
+      </div>
+
+      <div class="topbar__actions">
+        <button class="button button--text" type="button" id="stopRunButton" hidden><span class="button__label">Stop</span></button>
+        <button class="button button--quiet" type="button" id="newRunButton">
+          <svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg>
+          <span class="button__label"><span class="button__optional">New </span>run</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="screen ops-screen" id="opsScreen" aria-labelledby="runObjective">
+        <header class="run-brief">
+          <div class="run-brief__objective">
+            <p class="meta-label" id="objectiveLabel">Run objective</p>
+            <h1 id="runObjective">No active objective.</h1>
+          </div>
+
+          <dl class="run-stats" aria-label="Run status summary">
+            <div class="run-stat run-stat--attention">
+              <dt>State</dt>
+              <dd id="runStateValue">Paused</dd>
+            </div>
+            <div class="run-stat">
+              <dt>Active</dt>
+              <dd id="activeValue">1</dd>
+            </div>
+            <div class="run-stat run-stat--attention">
+              <dt>Approvals</dt>
+              <dd id="approvalValue">1</dd>
+            </div>
+            <div class="run-stat">
+              <dt>Questions</dt>
+              <dd id="questionValue">0</dd>
+            </div>
+            <div class="run-stat">
+              <dt>Blocked</dt>
+              <dd id="blockedValue">0</dd>
+            </div>
+            <div class="run-stat">
+              <dt>Cost / tokens</dt>
+              <dd id="tokenValue">—</dd>
+            </div>
+            <div class="run-stat">
+              <dt>Risk</dt>
+              <dd id="riskValue">Gate</dd>
+            </div>
+          </dl>
+
+          <div class="event-summary" aria-label="Latest and next event">
+            <p class="event-summary__item"><strong>Latest</strong> · <span id="latestEvent">approval.requested</span></p>
+            <p class="event-summary__item"><strong>Next</strong> · <span id="nextHandoff">—</span></p>
+            <button class="button button--quiet event-summary__action" type="button" id="approvalJumpButton" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#icon-inbox"/></svg>
+              <span class="button__label">Review approval</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="workspace">
+          <section class="graph-panel mode-run" id="graphPanel" aria-labelledby="graphTitle">
+            <header class="panel-header">
+              <div class="panel-header__copy">
+                <h2 id="graphTitle">Live run graph</h2>
+                <p id="graphSubtitle">Current state projection with an append-only event audit trail.</p>
+              </div>
+              <div class="panel-header__tools">
+                <div class="rail__mode-switch" aria-label="Graph view">
+                  <button class="rail__mode" type="button" data-mode="run" aria-pressed="true">Live run</button>
+                  <button class="rail__mode" type="button" data-mode="org" aria-pressed="false">Org definition</button>
+                </div>
+                <div class="graph-toolbar" role="group" aria-label="Graph zoom controls">
+                  <button class="icon-button" type="button" id="zoomOutButton" aria-label="Zoom graph out">−</button>
+                  <output class="graph-zoom-value" id="graphZoomValue" aria-live="polite">100%</output>
+                  <button class="icon-button" type="button" id="zoomInButton" aria-label="Zoom graph in">+</button>
+                  <button class="button button--quiet" type="button" id="fitGraphButton"><span class="button__label">Fit</span></button>
+                </div>
+                <div class="graph-legend" aria-label="Graph legend">
+                  <span class="legend-item"><span class="legend-line legend-line--active"></span> causal trace</span>
+                  <span class="legend-item"><span class="legend-line"></span> completed</span>
+                  <span class="legend-item"><span class="legend-line legend-line--pending"></span> eligible</span>
+                </div>
+              </div>
+            </header>
+
+            <figure class="graph-canvas" id="graphCanvas" aria-labelledby="graphTitle graphDescription">
+              <div class="graph-viewport" id="graphViewport" tabindex="0" aria-label="Scrollable graph viewport">
+                <svg class="org-graph org-graph--desktop" id="desktopGraph" role="group"></svg>
+                <svg class="org-graph org-graph--mobile" id="mobileGraph" role="group"></svg>
+              </div>
+
+              <figcaption id="graphDescription" class="graph-caption">
+                <span class="causal-label">Selected trace: <strong id="selectedTrace">—</strong></span>
+                <span>Edges show executable handoff conditions, not decoration.</span>
+              </figcaption>
+            </figure>
+          </section>
+
+          <aside class="rail" aria-label="Run queues and node switcher">
+            <section class="rail__section" aria-labelledby="queuesHeading">
+              <h2 class="rail__heading" id="queuesHeading">Queues</h2>
+              <ul class="queue-list" id="queueList"></ul>
+            </section>
+
+            <section class="rail__section" aria-labelledby="nodesHeading">
+              <h2 class="rail__heading" id="nodesHeading">Switch agent</h2>
+              <ul class="node-list" id="nodeList"></ul>
+            </section>
+          </aside>
+
+          <aside class="inspector" aria-labelledby="inspectorTitle">
+            <header class="inspector__header">
+              <div class="inspector__title-wrap">
+                <h2 id="inspectorTitle" tabindex="-1">Select a node</h2>
+                <p class="inspector__subtitle" id="inspectorSubtitle">Contract-backed node details</p>
+              </div>
+              <span class="inspector__status" id="inspectorStatus"><span class="state-mark state-mark--pending"></span> Idle</span>
+            </header>
+
+            <div class="inspector__tabs" role="tablist" aria-label="Node inspector sections">
+              <button class="tab-button" id="inspectorTabLive" type="button" role="tab" data-tab="live" aria-controls="inspectorContent" aria-selected="true" tabindex="0">Live</button>
+              <button class="tab-button" id="inspectorTabContract" type="button" role="tab" data-tab="contract" aria-controls="inspectorContent" aria-selected="false" tabindex="-1">Contract</button>
+              <button class="tab-button" id="inspectorTabContext" type="button" role="tab" data-tab="context" aria-controls="inspectorContent" aria-selected="false" tabindex="-1">Context</button>
+              <button class="tab-button" id="inspectorTabTools" type="button" role="tab" data-tab="tools" aria-controls="inspectorContent" aria-selected="false" tabindex="-1">Tools</button>
+              <button class="tab-button" id="inspectorTabMemory" type="button" role="tab" data-tab="memory" aria-controls="inspectorContent" aria-selected="false" tabindex="-1">Memory</button>
+              <button class="tab-button" id="inspectorTabArtifacts" type="button" role="tab" data-tab="artifacts" aria-controls="inspectorContent" aria-selected="false" tabindex="-1">Artifacts</button>
+            </div>
+
+            <div class="inspector__content" id="inspectorContent" role="tabpanel" aria-labelledby="inspectorTabLive" tabindex="0"></div>
+          </aside>
+        </div>
+
+        <section class="timeline" aria-labelledby="timelineTitle">
+          <header class="timeline__header">
+            <div>
+              <h2 id="timelineTitle">Event timeline</h2>
+              <p class="timeline__subtitle">Append-only run events.</p>
+            </div>
+            <div class="timeline__controls">
+              <button class="filter-button" type="button" data-filter="all" aria-pressed="true">All</button>
+              <button class="filter-button" type="button" data-filter="node" aria-pressed="false">Nodes</button>
+              <button class="filter-button" type="button" data-filter="approval" aria-pressed="false">Approvals</button>
+              <button class="icon-button" type="button" id="replayButton" aria-label="Refresh current run">
+                <svg class="icon" aria-hidden="true"><use href="#icon-replay"/></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="timeline__range">
+            <label for="replayCursor">Timeline window</label>
+            <input type="range" id="replayCursor" min="0" max="100" value="100">
+            <output id="replayOutput" for="replayCursor">100%</output>
+          </div>
+
+          <div class="timeline__lanes" id="timelineLanes" aria-hidden="true"></div>
+
+          <ol class="timeline__list" id="timelineList"></ol>
+
+          <footer class="timeline__foot">
+            <span id="timelineMode">Graphroom · no active run</span>
+            <span>events.jsonl audit · window <span id="cursorFoot">100%</span></span>
+          </footer>
+        </section>
+
+        <section class="agent-ledger" id="agentLedger" aria-labelledby="agentLedgerTitle">
+          <header class="agent-ledger__header">
+            <div>
+              <h2 id="agentLedgerTitle">Agent progression</h2>
+              <p>Follow the handoff path, then compare every agent’s current work, boundary, and expected output.</p>
+            </div>
+            <span class="meta-label">Run ledger</span>
+          </header>
+
+          <ol class="progress-path" id="progressPath" aria-label="Agent handoff progression"></ol>
+
+          <div class="agent-table-wrap">
+            <table class="agent-table">
+              <caption style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">All agents in the current run</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Agent</th>
+                  <th scope="col">State</th>
+                  <th scope="col">Current work</th>
+                  <th scope="col">Attempt</th>
+                  <th scope="col">Deliverable</th>
+                  <th scope="col">Sandbox</th>
+                </tr>
+              </thead>
+              <tbody id="agentTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="screen launch-screen" id="launchScreen" aria-labelledby="launchTitle" hidden>
+        <header class="launch-screen__top">
+          <div>
+            <p class="meta-label">Run launcher</p>
+            <h1 id="launchTitle">Start a graph run.</h1>
+            <p>Choose the runtime boundaries, enter an objective, and inspect the compiled organisation before launch.</p>
+          </div>
+          <button class="icon-button" type="button" id="backToOpsButton" aria-label="Back to Graph Ops Room">
+            <svg class="icon icon--lg" aria-hidden="true"><use href="#icon-back"/></svg>
+          </button>
+        </header>
+
+        <div class="launch-grid">
+          <section class="org-preview" aria-labelledby="orgPreviewTitle">
+            <h2 id="orgPreviewTitle">ORG.md preview</h2>
+            <div class="org-preview__meta">
+              <span id="orgNodeCount">— nodes</span>
+              <span id="orgEntryNode">Entry: —</span>
+              <span id="orgValidation">Validation: loading</span>
+            </div>
+            <div class="launch-graph-scroll"><svg class="launch-graph" id="launchGraph" role="img" aria-label="Compiled organisation preview"></svg></div>
+            <ul class="validation-list">
+              <li><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg><span id="orgContractsStatus">Loading Markdown node contracts.</span></li>
+              <li><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg><span id="orgApprovalPolicy">Loading approval policy.</span></li>
+              <li><svg class="icon" aria-hidden="true"><use href="#icon-assumption"/></svg><span id="orgMemoryPolicy">Loading memory policy.</span></li>
+            </ul>
+          </section>
+
+          <form class="run-form" id="runForm" novalidate>
+            <h2>Run boundaries</h2>
+            <div class="form-grid">
+              <div>
+                <label for="objectiveInput">Objective</label>
+                <textarea id="objectiveInput" name="objective" required placeholder="Describe the objective for this run" aria-describedby="objectiveHelp"></textarea>
+                <p class="field-help" id="objectiveHelp">Required. This becomes the immutable root goal for the run.</p>
+              </div>
+
+              <fieldset style="border:0;padding:0;margin:0;min-width:0">
+                <legend style="font-weight:600;font-size:var(--text-sm)">Run mode</legend>
+                <div class="radio-group">
+                  <label class="radio-option"><input type="radio" name="mode" value="simulate" checked><span>Simulate</span></label>
+                  <label class="radio-option"><input type="radio" name="mode" value="supervised"><span>Supervised</span></label>
+                </div>
+              </fieldset>
+
+              <div class="form-grid form-grid--two">
+                <div>
+                  <label for="budgetInput">Attempt budget</label>
+                  <input id="budgetInput" name="budget" value="Defined in ORG.md" disabled aria-describedby="budgetHelp">
+                  <p class="field-help" id="budgetHelp">Node limits come from the versioned Markdown contracts in v0.</p>
+                </div>
+                <div>
+                  <label for="approvalPolicy">Approval policy</label>
+                  <input id="approvalPolicy" value="Defined in ORG.md" disabled>
+                  <p class="field-help">The versioned org contract owns this boundary.</p>
+                </div>
+              </div>
+
+              <div>
+                <label for="memorySelect">Memory mode</label>
+                <select id="memorySelect" name="memory">
+                  <option value="ephemeral">Ephemeral</option>
+                  <option value="run_only">Run only</option>
+                  <option value="permanent_proposals">Permanent proposals</option>
+                </select>
+                <p class="field-help">Permanent writes remain proposals until policy allows them.</p>
+              </div>
+
+              <div class="form-actions">
+                <button class="button button--primary" type="submit" id="startRunButton"><span class="button__label">Start run</span></button>
+                <p class="form-status" id="formStatus" aria-live="polite"></p>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <div class="sr-status" id="liveRegion" aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
+  </div>
+
+  <script src="/prototype/app.js?v=20260722-scrollable-ops-3"></script>
+</body>
+</html>
