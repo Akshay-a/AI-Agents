@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.hallmark/
+.playwright-cli/
+.ruff_cache/
+__pycache__/
+.venv/
+output/
+runs/
+**/todo.md
