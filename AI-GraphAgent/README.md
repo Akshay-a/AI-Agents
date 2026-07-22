@@ -1,22 +1,54 @@
-# Graphroom
+# Graphroom: Graph Engineering for Codex
 
-Graphroom turns one coding objective into a small team of Codex workers you can actually watch.
+**The step after Loop Engineering.**
 
-Instead of giving one long prompt to one all-powerful agent, Graphroom breaks the work into seven clear jobs. Each job has its own Markdown contract, its own allowed tools, its own sandbox, and one expected deliverable. When a job becomes eligible, Graphroom starts a fresh Codex CLI thread for it, follows the live event stream, saves the result, and decides what can happen next.
+Loop Engineering makes one agent reliable by designing its inner cycle:
 
-Codex is still the worker. Graphroom is the manager.
+```text
+goal -> observe -> decide -> act -> evaluate -> repeat
+```
+
+That works until one loop has to be the planner, researcher, architect, builder, tester, and reviewer. Its context grows, its permissions blur, and it ends up judging its own work.
+
+Graph Engineering composes several reliable loops into a directed acyclic graph (DAG). Each node is a bounded **Loop Agent** with one job. The graph decides when that loop starts, what context it receives, which result it must return, and where the work goes next.
+
+```text
+objective
+  -> [Planner loop]
+  -> [Researcher loop]
+  -> [Architect loop]
+  -> [Human approval]
+  -> [Coding Pattern loop]
+  -> [Builder loop]
+  -> [Test Runner loop]
+  -> [Reviewer loop]
+```
+
+Codex runs each loop. Graphroom runs the graph.
 
 ![Graphroom run launcher showing the compiled seven-agent organisation](docs/images/graphroom-run-launcher.jpg)
 
-_Before a run starts, you can see the objective, mode, approval policy, memory boundary, and the organisation compiled from `ORG.md`._
+_Before a run starts, Graphroom compiles the DAG from `ORG.md` and the node contracts. You can see the workflow, runtime mode, approval policy, and memory boundary before any loop begins._
 
-## The simple idea
+## The evolution from prompts to graphs
 
-Codex is very good at taking a bounded task, reading the workspace, using tools, changing code, and returning a result. It is much harder to trust one enormous session to plan, research, design, build, test, review itself, and remember every boundary along the way.
+These ideas build on one another:
 
-Graphroom leans into the first part and takes care of the second.
+| Layer | The question it answers | The unit being engineered |
+| --- | --- | --- |
+| Prompt Engineering | What should the model do now? | One instruction and response |
+| Loop Engineering | How should one agent keep working until done? | Observe, act, evaluate, repeat |
+| Graph Engineering | How should several autonomous loops work together? | A DAG of Loop Agents and conditional handoffs |
 
-The default organisation is:
+Graph Engineering does not replace the agent loop. It turns that loop into a reusable building block.
+
+Codex is good at taking a bounded task, reading a workspace, using tools, changing code, and returning evidence. Graphroom gives each Codex thread that kind of bounded job, then keeps scheduling and policy outside the thread.
+
+The important distinction is simple: **the node can reason, but the graph must govern.**
+
+## A DAG becomes an autonomous workflow
+
+The repository ships with one software-delivery DAG:
 
 > Objective → Planner → Researcher → Architect → Human approval → Coding Pattern → Builder → Test Runner → Reviewer
 
@@ -30,20 +62,25 @@ The default organisation is:
 | Test Runner | Run the required checks and return evidence | Read-only |
 | Reviewer | Independently decide whether the work passes | Read-only |
 
-The graph owns routing, approval, limits, and final completion. A worker cannot quietly skip ahead or declare the whole run finished.
+After launch, Graphroom wakes a Loop Agent when its incoming condition is satisfied. When that agent returns a valid artifact, the graph records the handoff and wakes the next eligible loop. The workflow continues autonomously until it reaches an approval gate, a blocker, a failure, or the final reviewer verdict.
 
-## How Graphroom spins up Codex work
+That is bounded autonomy: the DAG moves work forward automatically, but every loop stays inside a visible contract. A node cannot quietly skip ahead, widen its own permissions, invent a new reporting line, or declare the whole run complete.
 
-In **Supervised** mode, this is what happens each time a node becomes active:
+`ORG.md` and `nodes/*.md` are the workflow source. Change the nodes and edges, and the same Graph Engineering model can describe a research pipeline, a content release, an incident response, or another governed workflow. The current v0.2 example is deliberately sequential and activates one eligible Loop Agent at a time.
 
-1. Graphroom reads that node's contract from `nodes/*.md`.
-2. It builds a small context packet with the objective, relevant earlier artifacts, approval state, build contract, and verified memory.
-3. It starts a new `codex exec` process in the run workspace. The node's contract decides whether that thread is read-only or may write to the workspace.
-4. Codex emits JSON events while it reasons and uses tools. Graphroom records the thread ID, tool activity, token usage, commands, and result in the run audit log.
-5. The final response must match a structured schema and include an artifact plus evidence. A friendly-sounding answer is not enough.
-6. Graphroom checks policy, records the handoff, and activates only the matching edge to the next job.
+## How the graph runs Codex loops
 
-Every node activation is therefore a real, separately observable Codex work thread—not another character pretending to be an agent inside one shared chat. Codex's own multi-agent delegation is disabled inside these workers so the organisation stays visible and the graph remains in control.
+In **Supervised** mode, every eligible node becomes a fresh Codex work loop:
+
+1. The graph sees that an incoming edge condition has been satisfied.
+2. Graphroom reads the node's Loop Agent contract from `nodes/*.md`.
+3. It builds a small context packet with the objective, relevant earlier artifacts, approval state, build contract, and verified memory.
+4. It starts a new `codex exec` thread in the run workspace. The contract decides whether that loop is read-only or may write to the workspace.
+5. Codex runs its own observe, decide, act, and evaluate cycle. Graphroom records the thread ID, tool activity, token usage, commands, and result in the run audit log.
+6. The final response must match a structured schema and include an artifact plus evidence. A friendly-sounding answer is not enough.
+7. Graphroom checks policy, updates graph state, and activates only the matching edge to the next Loop Agent.
+
+Every node activation is therefore a real, separately observable Codex thread—not another character pretending to be an agent inside one shared chat. Codex's own multi-agent delegation is disabled inside these loops so the DAG stays visible and the graph remains in control.
 
 Each supervised run gets an isolated working area:
 
@@ -64,9 +101,9 @@ runs/<run-id>/
 
 ![The complete seven-agent Graphroom run graph paused at the architecture gate](docs/images/graphroom-live-graph.jpg)
 
-_The same graph powers deterministic demos and supervised Codex runs. Completed work, the active handoff, eligible routes, failure routes, and the final reviewer are all visible._
+_The same DAG powers deterministic demos and supervised Codex runs. Completed loops, the active handoff, eligible routes, failure routes, and the final reviewer are all visible._
 
-The graph is more than a diagram. Every line is an executable handoff condition. The UI projects the actual runtime state, so a completed box means the node returned a valid artifact and evidence—not merely that an animation finished.
+The graph is more than a diagram. Every line is an executable handoff condition. The UI projects the actual runtime state, so a completed node means its Loop Agent returned a valid artifact and evidence—not merely that an animation finished.
 
 ### Human approval is a real pause
 
@@ -128,6 +165,8 @@ Useful optional environment settings:
 
 ## What this prototype proves
 
-Graphroom is deliberately small. It proves that a useful agent organisation does not need seven agents talking endlessly to one another. It needs seven bounded jobs, clean handoffs, visible evidence, and a manager that knows when to stop.
+Loop Engineering explains how one agent should work. Graph Engineering explains how several Loop Agents should work together.
 
-The current version keeps LangGraph checkpoints in memory, stores run truth locally, uses one explicit approval gate, and executes nodes sequentially. Those constraints are intentional: the goal is to make real Codex work understandable and governable before making the organisation larger.
+Graphroom is deliberately small. It proves that an autonomous workflow does not need seven agents talking endlessly to one another. It needs bounded loops, executable handoffs, visible evidence, and a graph that knows when to continue, pause, fail, or stop.
+
+The current version keeps LangGraph checkpoints in memory, stores run truth locally, uses one explicit approval gate, and executes nodes sequentially. Those constraints are intentional. The goal is to make a graph of real Codex loops understandable and governable before making it larger.
